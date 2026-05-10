@@ -1,0 +1,726 @@
+"use client";
+
+import { useEffect, useState, useCallback } from "react";
+import { useRouter } from "next/navigation";
+import Link from "next/link";
+import Image from "next/image";
+import { 
+  LayoutDashboard, User, Music, Calendar, Bell, DollarSign, 
+  Plus, ChevronRight, LogOut, Check, X, Search, MapPin, Eye, Star
+} from "lucide-react";
+import ArtistCard, { Artist } from "@/components/ArtistCard";
+
+interface User {
+  id: string;
+  name: string;
+  email: string;
+  role: string;
+}
+
+interface Booking {
+  _id: string;
+  eventName: string;
+  eventType: string;
+  date: string;
+  venue: string;
+  finalPrice: number;
+  status: string;
+  paymentStatus: string;
+  artistName: string;
+  artistImage: string;
+}
+
+interface DashboardStats {
+  totalBookings: number;
+  upcomingEvents: number;
+  totalSpent: number;
+}
+
+const ADMIN_COMMISSION_PERCENT = 30;
+
+function calculateFinalPrice(basePrice: number) {
+  return Math.round(basePrice * (1 + ADMIN_COMMISSION_PERCENT / 100));
+}
+
+export default function PartnerDashboard() {
+  const router = useRouter();
+  const [user, setUser] = useState<User | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState("dashboard");
+  const [bookings, setBookings] = useState<Booking[]>([]);
+  const [stats, setStats] = useState<DashboardStats>({ totalBookings: 0, upcomingEvents: 0, totalSpent: 0 });
+  const [artists, setArtists] = useState<any[]>([]);
+  const [selectedArtist, setSelectedArtist] = useState<any>(null);
+  
+  // Form states
+  const [bookingForm, setBookingForm] = useState({
+    artistId: "", eventName: "", eventType: "Private Event", date: "", venue: "", notes: ""
+  });
+  const [searchQuery, setSearchQuery] = useState("");
+  const [bookingLoading, setBookingLoading] = useState(false);
+  const [bookingSuccess, setBookingSuccess] = useState("");
+  const [payingBooking, setPayingBooking] = useState<string | null>(null);
+  const [paymentSuccess, setPaymentSuccess] = useState("");
+  const [reviewForm, setReviewForm] = useState({ rating: 5, comment: "" });
+  const [showReviewModal, setShowReviewModal] = useState<string | null>(null);
+
+  const fetchData = useCallback(async () => {
+    const token = localStorage.getItem("token");
+    if (!token) return;
+
+    try {
+      const bookingsRes = await fetch("/api/partner/bookings", {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      const bookingsData = await bookingsRes.json();
+      if (bookingsData.success) {
+        setBookings(bookingsData.data);
+        const total = bookingsData.data.reduce((sum: number, b: Booking) => sum + b.finalPrice, 0);
+        const upcoming = bookingsData.data.filter((b: Booking) => b.status === "accepted" || b.status === "paid");
+        setStats({
+          totalBookings: bookingsData.data.length,
+          upcomingEvents: upcoming.length,
+          totalSpent: total
+        });
+      }
+
+      const artistsRes = await fetch("/api/artists");
+      const artistsData = await artistsRes.json();
+      if (artistsData.success) {
+        setArtists(artistsData.data);
+      }
+    } catch (error) {
+      console.error("Error fetching data:", error);
+    }
+  }, []);
+
+  useEffect(() => {
+    const checkAuth = () => {
+      const token = localStorage.getItem("token");
+      const userData = localStorage.getItem("user");
+      
+      if (!token || !userData) {
+        router.push("/login");
+        return;
+      }
+
+      const parsed = JSON.parse(userData);
+      if (parsed.role !== "event_partner") {
+        router.push("/login");
+        return;
+      }
+      setUser(parsed);
+      fetchData().finally(() => setLoading(false));
+    };
+    checkAuth();
+  }, [router, fetchData]);
+
+  const handleLogout = () => {
+    localStorage.removeItem("token");
+    localStorage.removeItem("user");
+    router.push("/");
+  };
+
+  const createBooking = async () => {
+    const token = localStorage.getItem("token");
+    if (!token || !bookingForm.artistId) return;
+
+    setBookingLoading(true);
+    setBookingSuccess("");
+
+    try {
+      const res = await fetch("/api/partner/bookings", {
+        method: "POST",
+        headers: { 
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify(bookingForm)
+      });
+      const data = await res.json();
+      if (data.success) {
+        setBookingSuccess("Booking request sent successfully!");
+        setBookingForm({ artistId: "", eventName: "", eventType: "Private Event", date: "", venue: "", notes: "" });
+        setSelectedArtist(null);
+        fetchData();
+        setTimeout(() => setBookingSuccess(""), 3000);
+      }
+    } catch (error) {
+      console.error("Error creating booking:", error);
+    } finally {
+      setBookingLoading(false);
+    }
+  };
+
+  const updateBooking = async (bookingId: string, action: "cancel" | "markPaid" | "complete") => {
+    const token = localStorage.getItem("token");
+    if (!token) return;
+
+    try {
+      const res = await fetch("/api/partner/bookings", {
+        method: "PUT",
+        headers: { 
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify({ bookingId, action })
+      });
+      const data = await res.json();
+      if (data.success) {
+        fetchData();
+      }
+    } catch (error) {
+      console.error("Error updating booking:", error);
+    }
+  };
+
+  const initiatePayment = async (booking: Booking) => {
+    const token = localStorage.getItem("token");
+    if (!token) return;
+
+    setPayingBooking(booking._id);
+    try {
+      const orderRes = await fetch("/api/payments/create-order", {
+        method: "POST",
+        headers: { 
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify({ bookingId: booking._id, amount: booking.finalPrice })
+      });
+      const orderData = await orderRes.json();
+      
+      if (orderData.success) {
+        const razorpayKeyRes = await fetch("/api/payments/key");
+        const keyData = await razorpayKeyRes.json();
+        
+        const options = {
+          key: keyData.key || "rzp_test_key",
+          amount: orderData.data.amount,
+          currency: "INR",
+          name: "VibeStage",
+          description: `Payment for ${booking.eventName}`,
+          order_id: orderData.data.orderId,
+          handler: async (response: any) => {
+            const verifyRes = await fetch("/api/payments/verify", {
+              method: "POST",
+              headers: { 
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${token}`
+              },
+              body: JSON.stringify({
+                bookingId: booking._id,
+                razorpayPaymentId: response.razorpay_payment_id,
+                razorpayOrderId: response.razorpay_order_id
+              })
+            });
+            const verifyData = await verifyRes.json();
+            if (verifyData.success) {
+              setPaymentSuccess("Payment successful!");
+              fetchData();
+              setTimeout(() => setPaymentSuccess(""), 3000);
+            }
+          }
+        };
+        
+        const razorpay = (window as any).Razorpay && new (window as any).Razorpay(options);
+        if (razorpay) razorpay.open();
+      }
+    } catch (error) {
+      console.error("Payment error:", error);
+    } finally {
+      setPayingBooking(null);
+    }
+  };
+
+  const submitReview = async (bookingId: string) => {
+    const token = localStorage.getItem("token");
+    if (!token) return;
+
+    try {
+      const res = await fetch("/api/reviews", {
+        method: "POST",
+        headers: { 
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify({ bookingId, rating: reviewForm.rating, comment: reviewForm.comment })
+      });
+      const data = await res.json();
+      if (data.success) {
+        setShowReviewModal(null);
+        setReviewForm({ rating: 5, comment: "" });
+        setPaymentSuccess("Review submitted!");
+        setTimeout(() => setPaymentSuccess(""), 3000);
+      }
+    } catch (error) {
+      console.error("Review error:", error);
+    }
+  };
+
+  const filteredArtists = artists.filter((a: any) => 
+    a.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    a.genre.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    a.location.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
+  const pendingBookings = bookings.filter(b => b.status === "pending");
+  const acceptedBookings = bookings.filter(b => b.status === "accepted" || b.status === "paid");
+  const completedBookings = bookings.filter(b => b.status === "completed");
+  const cancelledBookings = bookings.filter(b => b.status === "cancelled" || b.status === "rejected");
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="w-10 h-10 border-2 border-brand-orange/30 border-t-brand-orange rounded-full animate-spin" />
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen flex bg-brand-bg">
+      {/* Sidebar */}
+      <aside className="fixed left-0 top-0 bottom-0 w-64 bg-brand-surface border-r border-white/[0.06] p-4 hidden lg:block">
+        <div className="flex items-center gap-2 mb-8 px-2">
+          <Link href="/" className="flex items-center gap-2">
+            <div className="flex items-end gap-[3px] h-6">
+              {[0, 150, 80, 200].map((delay, i) => (
+                <div key={i} className="w-[3px] rounded-full bg-gradient-to-t from-brand-orange to-brand-pink animate-equalizer" style={{ animationDelay: `${delay}ms`, height: `${12 + i * 4}px` }} />
+              ))}
+            </div>
+            <span className="text-lg font-display font-bold"><span className="gradient-text">Vibe</span><span className="text-white">Stage</span></span>
+          </Link>
+        </div>
+
+        <nav className="space-y-1">
+          {[
+            { id: "dashboard", icon: LayoutDashboard, label: "Dashboard" },
+            { id: "browse", icon: Music, label: "Browse Artists" },
+            { id: "create", icon: Plus, label: "Create Event" },
+            { id: "bookings", icon: Calendar, label: "My Bookings" },
+            { id: "history", icon: ChevronRight, label: "History" },
+          ].map((item) => (
+            <button
+              key={item.id}
+              onClick={() => setActiveTab(item.id)}
+              className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${
+                activeTab === item.id 
+                  ? "bg-brand-gradient text-white" 
+                  : "text-white/60 hover:text-white hover:bg-white/[0.04]"
+              }`}
+            >
+              <item.icon className="w-5 h-5" />
+              <span className="font-medium">{item.label}</span>
+              {item.id === "bookings" && pendingBookings.length > 0 && (
+                <span className="ml-auto bg-brand-pink text-white text-xs px-2 py-0.5 rounded-full">{pendingBookings.length}</span>
+              )}
+            </button>
+          ))}
+        </nav>
+
+        <button onClick={handleLogout} className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-white/60 hover:text-red-400 hover:bg-red-400/10 transition-all mt-8">
+          <LogOut className="w-5 h-5" />
+          <span className="font-medium">Logout</span>
+        </button>
+      </aside>
+
+      {/* Main Content */}
+      <main className="flex-1 lg:ml-64 p-6 pt-8">
+        {/* Mobile Header */}
+        <div className="lg:hidden flex items-center justify-between mb-6">
+          <h1 className="text-xl font-display font-bold gradient-text">Partner Dashboard</h1>
+          <button onClick={handleLogout} className="text-white/60"><LogOut className="w-5 h-5" /></button>
+        </div>
+
+        {/* Dashboard Tab */}
+        {activeTab === "dashboard" && (
+          <div>
+            <div className="flex items-center justify-between mb-8">
+              <div>
+                <h2 className="text-2xl font-display font-bold text-white">Welcome back, {user?.name}!</h2>
+                <p className="text-white/40 mt-1">Event Partner Dashboard</p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+              <div className="glass-card p-5" onClick={() => setActiveTab("bookings")}>
+                <p className="text-white/40 text-sm mb-1">Total Bookings</p>
+                <p className="text-2xl font-bold gradient-text">{stats.totalBookings}</p>
+              </div>
+              <div className="glass-card p-5">
+                <p className="text-white/40 text-sm mb-1">Upcoming</p>
+                <p className="text-2xl font-bold gradient-text">{stats.upcomingEvents}</p>
+              </div>
+              <div className="glass-card p-5">
+                <p className="text-white/40 text-sm mb-1">Completed</p>
+                <p className="text-2xl font-bold gradient-text">{completedBookings.length}</p>
+              </div>
+              <div className="glass-card p-5">
+                <p className="text-white/40 text-sm mb-1">Total Spent</p>
+                <p className="text-2xl font-bold gradient-text">₹{stats.totalSpent.toLocaleString()}</p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <div className="glass-card p-6">
+                <h3 className="text-lg font-semibold text-white mb-4">Quick Actions</h3>
+                <div className="space-y-3">
+                  <button onClick={() => setActiveTab("browse")} className="w-full text-left p-4 rounded-xl bg-white/[0.04] hover:bg-white/[0.06] transition-colors">
+                    <p className="text-white font-medium">Browse Artists</p>
+                    <p className="text-sm text-white/40">Find performers for your events</p>
+                  </button>
+                  <button onClick={() => setActiveTab("create")} className="w-full text-left p-4 rounded-xl bg-white/[0.04] hover:bg-white/[0.06] transition-colors">
+                    <p className="text-white font-medium">Create New Event</p>
+                    <p className="text-sm text-white/40">Book an artist for your event</p>
+                  </button>
+                </div>
+              </div>
+
+              <div className="glass-card p-6">
+                <h3 className="text-lg font-semibold text-white mb-4">Pending Requests</h3>
+                {pendingBookings.length > 0 ? (
+                  <div className="space-y-3">
+                    {pendingBookings.slice(0, 3).map((booking) => (
+                      <div key={booking._id} className="p-3 rounded-lg bg-white/[0.04]">
+                        <p className="text-white font-medium">{booking.eventName}</p>
+                        <p className="text-sm text-white/40">{booking.artistName}</p>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-white/40">No pending requests</p>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Browse Artists Tab */}
+        {activeTab === "browse" && (
+          <div>
+            <h2 className="text-2xl font-display font-bold text-white mb-6">Browse Artists</h2>
+            
+            <div className="relative mb-6">
+              <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-white/30" />
+              <input
+                type="text"
+                placeholder="Search by name, genre, or location..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full h-12 pl-12 pr-4 rounded-xl bg-white/[0.04] border border-white/[0.08] text-white placeholder-white/30"
+              />
+            </div>
+
+            {filteredArtists.length > 0 ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                {filteredArtists.map((artist: any) => (
+                  <div key={artist._id} className="glass-card p-4">
+                    <div className="relative h-40 rounded-xl overflow-hidden mb-3">
+                      <Image src={artist.image} alt={artist.name} fill className="object-cover" />
+                      <div className="absolute top-2 right-2 px-2 py-1 rounded-full text-xs bg-brand-bg/80 text-white">{artist.genre}</div>
+                    </div>
+                    <h3 className="text-white font-semibold">{artist.name}</h3>
+                    <p className="text-sm text-white/40 flex items-center gap-1"><MapPin className="w-3 h-3" /> {artist.location}</p>
+                    <div className="flex items-center justify-between mt-3">
+                      <div>
+                        <span className="text-lg font-bold gradient-text">₹{calculateFinalPrice(artist.price).toLocaleString()}</span>
+                        <span className="text-xs text-white/30">/show</span>
+                      </div>
+                      <button 
+                        onClick={() => { setSelectedArtist(artist); setActiveTab("create"); }}
+                        className="px-4 py-1.5 rounded-lg text-sm bg-brand-gradient text-white"
+                      >
+                        Book
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="glass-card p-12 text-center">
+                <p className="text-white/40">No artists found</p>
+              </div>
+            )}
+
+            {selectedArtist && (
+              <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-brand-bg/90">
+                <div className="glass-card p-6 max-w-lg w-full">
+                  <div className="flex items-center gap-4 mb-4">
+                    <Image src={selectedArtist.image} alt={selectedArtist.name} width={64} height={64} className="rounded-xl object-cover" />
+                    <div>
+                      <h3 className="text-lg font-semibold text-white">{selectedArtist.name}</h3>
+                      <p className="text-sm text-white/40">{selectedArtist.genre} • {selectedArtist.location}</p>
+                    </div>
+                    <button onClick={() => setSelectedArtist(null)} className="ml-auto text-white/40"><X className="w-5 h-5" /></button>
+                  </div>
+                  <div className="space-y-4">
+                    <div>
+                      <label className="block text-sm text-white/40 mb-1">Event Name</label>
+                      <input type="text" value={bookingForm.eventName} onChange={(e) => setBookingForm({ ...bookingForm, eventName: e.target.value })} className="w-full px-4 py-3 rounded-xl bg-white/[0.04] border border-white/[0.08] text-white" placeholder="My Wedding" />
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm text-white/40 mb-1">Event Type</label>
+                        <select value={bookingForm.eventType} onChange={(e) => setBookingForm({ ...bookingForm, eventType: e.target.value })} className="w-full px-4 py-3 rounded-xl bg-white/[0.04] border border-white/[0.08] text-white">
+                          <option value="Private Event">Private Event</option>
+                          <option value="Wedding">Wedding</option>
+                          <option value="Corporate">Corporate</option>
+                          <option value="Birthday">Birthday</option>
+                          <option value="Festival">Festival</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-sm text-white/40 mb-1">Date</label>
+                        <input type="date" value={bookingForm.date} onChange={(e) => setBookingForm({ ...bookingForm, date: e.target.value })} className="w-full px-4 py-3 rounded-xl bg-white/[0.04] border border-white/[0.08] text-white" />
+                      </div>
+                    </div>
+                    <div>
+                      <label className="block text-sm text-white/40 mb-1">Venue</label>
+                      <input type="text" value={bookingForm.venue} onChange={(e) => setBookingForm({ ...bookingForm, venue: e.target.value })} className="w-full px-4 py-3 rounded-xl bg-white/[0.04] border border-white/[0.08] text-white" placeholder="Hotel Taj, Mumbai" />
+                    </div>
+                    <div>
+                      <label className="block text-sm text-white/40 mb-1">Notes</label>
+                      <textarea value={bookingForm.notes} onChange={(e) => setBookingForm({ ...bookingForm, notes: e.target.value })} rows={2} className="w-full px-4 py-3 rounded-xl bg-white/[0.04] border border-white/[0.08] text-white resize-none" placeholder="Any special requirements..." />
+                    </div>
+                    <div className="flex items-center justify-between p-3 rounded-lg bg-brand-orange/10">
+                      <span className="text-white/40">Final Price:</span>
+                      <span className="text-xl font-bold gradient-text">₹{calculateFinalPrice(selectedArtist.price).toLocaleString()}</span>
+                    </div>
+                    <button 
+                      onClick={() => { setBookingForm({ ...bookingForm, artistId: selectedArtist._id }); setActiveTab("create"); }}
+                      className="btn-primary w-full"
+                    >
+                      Continue to Book
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Create Event Tab */}
+        {activeTab === "create" && (
+          <div className="max-w-2xl">
+            <h2 className="text-2xl font-display font-bold text-white mb-6">Create Event & Book Artist</h2>
+            
+            {bookingSuccess && (
+              <div className="mb-6 p-4 rounded-xl bg-green-500/10 text-green-400">{bookingSuccess}</div>
+            )}
+
+            {!bookingForm.artistId ? (
+              <div className="glass-card p-6 text-center">
+                <p className="text-white/40 mb-4">Select an artist first to create a booking</p>
+                <button onClick={() => setActiveTab("browse")} className="btn-primary">Browse Artists</button>
+              </div>
+            ) : (
+              <div className="space-y-6">
+                <div className="glass-card p-4">
+                  <div className="flex items-center gap-3">
+                    <Image src={artists.find(a => a._id === bookingForm.artistId)?.image || ""} alt="" width={48} height={48} className="rounded-lg object-cover" />
+                    <div>
+                      <p className="text-white font-medium">{artists.find(a => a._id === bookingForm.artistId)?.name}</p>
+                      <p className="text-sm text-brand-orange">₹{calculateFinalPrice(artists.find(a => a._id === bookingForm.artistId)?.price || 0).toLocaleString()}</p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="glass-card p-6 space-y-4">
+                  <div>
+                    <label className="block text-sm text-white/40 mb-1.5">Event Name *</label>
+                    <input type="text" required value={bookingForm.eventName} onChange={(e) => setBookingForm({ ...bookingForm, eventName: e.target.value })} className="w-full px-4 py-3 rounded-xl bg-white/[0.04] border border-white/[0.08] text-white" />
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm text-white/40 mb-1.5">Event Type</label>
+                      <select value={bookingForm.eventType} onChange={(e) => setBookingForm({ ...bookingForm, eventType: e.target.value })} className="w-full px-4 py-3 rounded-xl bg-white/[0.04] border border-white/[0.08] text-white">
+                        <option value="Private Event">Private Event</option>
+                        <option value="Wedding">Wedding</option>
+                        <option value="Corporate">Corporate</option>
+                        <option value="Birthday">Birthday</option>
+                        <option value="Festival">Festival</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-sm text-white/40 mb-1.5">Date *</label>
+                      <input type="date" required value={bookingForm.date} onChange={(e) => setBookingForm({ ...bookingForm, date: e.target.value })} className="w-full px-4 py-3 rounded-xl bg-white/[0.04] border border-white/[0.08] text-white" />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-sm text-white/40 mb-1.5">Venue *</label>
+                    <input type="text" required value={bookingForm.venue} onChange={(e) => setBookingForm({ ...bookingForm, venue: e.target.value })} className="w-full px-4 py-3 rounded-xl bg-white/[0.04] border border-white/[0.08] text-white" />
+                  </div>
+                  <div>
+                    <label className="block text-sm text-white/40 mb-1.5">Notes</label>
+                    <textarea value={bookingForm.notes} onChange={(e) => setBookingForm({ ...bookingForm, notes: e.target.value })} rows={3} className="w-full px-4 py-3 rounded-xl bg-white/[0.04] border border-white/[0.08] text-white resize-none" />
+                  </div>
+                </div>
+
+                <button onClick={createBooking} disabled={bookingLoading} className="btn-primary w-full">
+                  <span>{bookingLoading ? "Sending Request..." : "Send Booking Request"}</span>
+                </button>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* My Bookings Tab */}
+        {activeTab === "bookings" && (
+          <div className="max-w-3xl">
+            <h2 className="text-2xl font-display font-bold text-white mb-6">My Bookings</h2>
+            
+            <div className="flex gap-2 mb-6">
+              {[
+                { label: "All", list: bookings },
+                { label: "Pending", list: pendingBookings },
+                { label: "Accepted", list: acceptedBookings },
+                { label: "Completed", list: completedBookings },
+                { label: "Cancelled", list: cancelledBookings },
+              ].map((tab) => (
+                <button
+                  key={tab.label}
+                  onClick={() => {}}
+                  className="px-4 py-1.5 rounded-full text-sm bg-white/[0.04] text-white/60 hover:text-white"
+                >
+                  {tab.label} ({tab.list.length})
+                </button>
+              ))}
+            </div>
+
+            {paymentSuccess && (
+              <div className="mb-6 p-4 rounded-xl bg-green-500/10 text-green-400">{paymentSuccess}</div>
+            )}
+            
+            {bookings.length > 0 ? (
+              <div className="space-y-3">
+                {bookings.map((booking) => (
+                  <div key={booking._id} className="glass-card p-4">
+                    <div className="flex items-center justify-between mb-3">
+                      <div className="flex items-center gap-4">
+                        <div className="w-12 h-12 rounded-lg bg-white/[0.04] flex items-center justify-center">
+                          <Calendar className="w-6 h-6 text-brand-orange" />
+                        </div>
+                        <div>
+                          <p className="text-white font-medium">{booking.eventName}</p>
+                          <p className="text-sm text-white/40">{booking.artistName} • {new Date(booking.date).toLocaleDateString()}</p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <span className={`text-xs px-2 py-1 rounded-full ${
+                          booking.status === "completed" ? "bg-green-500/20 text-green-400" :
+                          booking.status === "accepted" || booking.status === "paid" ? "bg-blue-500/20 text-blue-400" :
+                          booking.status === "cancelled" || booking.status === "rejected" ? "bg-red-500/20 text-red-400" :
+                          "bg-yellow-500/20 text-yellow-400"
+                        }`}>{booking.status}</span>
+                        <p className="text-brand-orange font-semibold">₹{booking.finalPrice.toLocaleString()}</p>
+                      </div>
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      {booking.status === "accepted" && booking.paymentStatus !== "paid" && (
+                        <button
+                          onClick={() => initiatePayment(booking)}
+                          disabled={payingBooking === booking._id}
+                          className="px-4 py-2 rounded-lg bg-brand-gradient text-white text-sm font-medium"
+                        >
+                          {payingBooking === booking._id ? "Processing..." : "Pay Now"}
+                        </button>
+                      )}
+                      {booking.status === "accepted" && (
+                        <button
+                          onClick={() => updateBooking(booking._id, "cancel")}
+                          className="px-4 py-2 rounded-lg bg-red-500/20 text-red-400 text-sm"
+                        >
+                          Cancel
+                        </button>
+                      )}
+                      {booking.status === "paid" && (
+                        <button
+                          onClick={() => updateBooking(booking._id, "complete")}
+                          className="px-4 py-2 rounded-lg bg-green-500/20 text-green-400 text-sm"
+                        >
+                          Mark Completed
+                        </button>
+                      )}
+                      {booking.status === "completed" && (
+                        <button
+                          onClick={() => setShowReviewModal(booking._id)}
+                          className="px-4 py-2 rounded-lg bg-brand-gradient text-white text-sm font-medium"
+                        >
+                          Leave Review
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="glass-card p-12 text-center">
+                <p className="text-white/40">No bookings yet</p>
+                <button onClick={() => setActiveTab("browse")} className="btn-primary mt-4">Browse Artists</button>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* History Tab */}
+        {activeTab === "history" && (
+          <div className="max-w-3xl">
+            <h2 className="text-2xl font-display font-bold text-white mb-6">Booking History</h2>
+            <div className="glass-card p-6">
+              <p className="text-white/40">Your completed and cancelled bookings will appear here.</p>
+            </div>
+          </div>
+        )}
+      </main>
+
+      {/* Review Modal */}
+      {showReviewModal && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="glass-card max-w-md w-full p-6">
+            <h3 className="text-xl font-bold text-white mb-4">Leave a Review</h3>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm text-white/40 mb-2">Rating</label>
+                <div className="flex gap-2">
+                  {[1, 2, 3, 4, 5].map((rating) => (
+                    <button
+                      key={rating}
+                      onClick={() => setReviewForm({ ...reviewForm, rating })}
+                      className={`p-2 rounded-lg ${reviewForm.rating >= rating ? "text-yellow-400" : "text-white/30"}`}
+                    >
+                      <Star className="w-6 h-6 fill-current" />
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div>
+                <label className="block text-sm text-white/40 mb-2">Comment (optional)</label>
+                <textarea
+                  value={reviewForm.comment}
+                  onChange={(e) => setReviewForm({ ...reviewForm, comment: e.target.value })}
+                  rows={3}
+                  placeholder="Share your experience..."
+                  className="w-full px-4 py-3 rounded-xl bg-white/[0.04] border border-white/[0.08] text-white resize-none"
+                />
+              </div>
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setShowReviewModal(null)}
+                  className="flex-1 px-4 py-2 rounded-xl bg-white/[0.04] text-white/60 hover:text-white"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={() => submitReview(showReviewModal)}
+                  className="flex-1 px-4 py-2 rounded-xl bg-brand-gradient text-white font-medium"
+                >
+                  Submit Review
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}

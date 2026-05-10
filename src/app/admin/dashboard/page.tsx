@@ -1,0 +1,719 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import Link from "next/link";
+import Image from "next/image";
+import { Users, Mic2, Calendar, DollarSign, LogOut, Eye, Trash2, ChevronLeft, CreditCard, CheckCircle, XCircle } from "lucide-react";
+
+interface User {
+  id: string;
+  name: string;
+  email: string;
+  role: string;
+}
+
+interface Artist {
+  _id: string;
+  name: string;
+  email: string;
+  phone: string;
+  genre: string;
+  location: string;
+  price: number;
+  image: string;
+  bio: string;
+  rating?: number;
+  languages?: string[];
+  socialLinks?: {
+    instagram?: string;
+    youtube?: string;
+    website?: string;
+  };
+  isAvailable?: boolean;
+  createdAt: string;
+}
+
+interface Partner {
+  _id: string;
+  name: string;
+  email: string;
+  phone: string;
+  location: string;
+  createdAt: string;
+}
+
+interface Booking {
+  _id: string;
+  eventName: string;
+  artistId: { _id: string; name: string; genre: string; image: string };
+  organizerEmail: string;
+  date: string;
+  venue: string;
+  budget: number;
+  status: string;
+  createdAt: string;
+}
+
+interface ProfileData {
+  type: "artist" | "partner";
+  data: Artist | Partner;
+}
+
+interface Analytics {
+  totalArtists: number;
+  totalPartners: number;
+  totalBookings: number;
+  totalRevenue: number;
+  commission: number;
+}
+
+type Tab = "analytics" | "artists" | "partners" | "bookings" | "payouts";
+
+export default function AdminDashboard() {
+  const router = useRouter();
+  const [user, setUser] = useState<User | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState<Tab>("analytics");
+  
+  const [artists, setArtists] = useState<Artist[]>([]);
+  const [partners, setPartners] = useState<Partner[]>([]);
+  const [bookings, setBookings] = useState<Booking[]>([]);
+  const [analytics, setAnalytics] = useState<Analytics | null>(null);
+  const [payoutSummary, setPayoutSummary] = useState<{totalRevenue: number; totalCommission: number; pendingPayouts: number; completedPayouts: number} | null>(null);
+  
+  const [dataLoading, setDataLoading] = useState(false);
+  const [selectedProfile, setSelectedProfile] = useState<ProfileData | null>(null);
+  const [profileLoading, setProfileLoading] = useState(false);
+
+  useEffect(() => {
+    const checkAuth = () => {
+      const token = localStorage.getItem("token");
+      const userData = localStorage.getItem("user");
+      
+      if (!token || !userData) {
+        router.push("/login");
+        return;
+      }
+
+      const parsed = JSON.parse(userData);
+      if (parsed.role !== "admin") {
+        router.push("/login");
+        return;
+      }
+      setUser(parsed);
+      setLoading(false);
+    };
+    checkAuth();
+  }, [router]);
+
+  useEffect(() => {
+    if (!loading && user) {
+      fetchData();
+    }
+  }, [loading, activeTab, user]);
+
+  const fetchData = async () => {
+    setDataLoading(true);
+    try {
+      if (activeTab === "artists") {
+        const res = await fetch("/api/admin/data?type=artists");
+        const data = await res.json();
+        if (data.success) setArtists(data.data);
+      } else if (activeTab === "partners") {
+        const res = await fetch("/api/admin/data?type=partners");
+        const data = await res.json();
+        if (data.success) setPartners(data.data);
+      } else if (activeTab === "bookings") {
+        const res = await fetch("/api/admin/data?type=bookings");
+        const data = await res.json();
+        if (data.success) setBookings(data.data);
+      } else if (activeTab === "analytics") {
+        const res = await fetch("/api/admin/data?type=analytics");
+        const data = await res.json();
+        if (data.success) setAnalytics(data.data);
+      } else if (activeTab === "payouts") {
+        const res = await fetch("/api/admin/payouts?action=summary");
+        const data = await res.json();
+        if (data.success) setPayoutSummary(data.data);
+      }
+    } catch (error) {
+      console.error("Fetch error:", error);
+    } finally {
+      setDataLoading(false);
+    }
+  };
+
+  const handleDelete = async (id: string, model: string) => {
+    if (!confirm("Are you sure you want to delete this item?")) return;
+    
+    try {
+      const res = await fetch(`/api/admin/data?id=${id}&model=${model}`, { method: "DELETE" });
+      const data = await res.json();
+      if (data.success) {
+        fetchData();
+      } else {
+        alert("Delete failed");
+      }
+    } catch {
+      alert("Delete failed");
+    }
+  };
+
+  const handleViewProfile = async (id: string, type: "artist" | "partner") => {
+    setProfileLoading(true);
+    try {
+      const res = await fetch(`/api/admin/profile?id=${id}&type=${type}`);
+      const data = await res.json();
+      if (data.success) {
+        setSelectedProfile({ type, data: data.data });
+      } else {
+        alert("Failed to load profile");
+      }
+    } catch {
+      alert("Failed to load profile");
+    } finally {
+      setProfileLoading(false);
+    }
+  };
+
+  const handleLogout = () => {
+    localStorage.removeItem("token");
+    localStorage.removeItem("user");
+    router.push("/");
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="w-10 h-10 border-2 border-brand-orange/30 border-t-brand-orange rounded-full animate-spin" />
+      </div>
+    );
+  }
+
+  const tabs = [
+    { id: "analytics", label: "Analytics", icon: DollarSign },
+    { id: "artists", label: "Artists", icon: Mic2 },
+    { id: "partners", label: "Partners", icon: Users },
+    { id: "bookings", label: "Bookings", icon: Calendar },
+    { id: "payouts", label: "Payouts", icon: CreditCard },
+  ];
+
+  return (
+    <div className="min-h-screen flex bg-brand-bg">
+      <aside className="w-64 bg-brand-surface border-r border-white/[0.06] fixed h-full">
+        <div className="p-6">
+          <Link href="/" className="flex items-center gap-2 mb-8">
+            <span className="text-xl font-display font-bold">
+              <span className="gradient-text">Vibe</span>
+              <span className="text-white">Stage</span>
+            </span>
+          </Link>
+          
+          <nav className="space-y-2">
+            {tabs.map((tab) => (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id as Tab)}
+                className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${
+                  activeTab === tab.id
+                    ? "bg-brand-gradient text-white"
+                    : "text-white/50 hover:text-white hover:bg-white/[0.04]"
+                }`}
+              >
+                <tab.icon className="w-5 h-5" />
+                {tab.label}
+              </button>
+            ))}
+          </nav>
+        </div>
+        
+        <div className="absolute bottom-6 left-6 right-6">
+          <button
+            onClick={handleLogout}
+            className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-white/50 hover:text-red-400 hover:bg-red-400/10 transition-all"
+          >
+            <LogOut className="w-5 h-5" />
+            Logout
+          </button>
+        </div>
+      </aside>
+
+      <main className="flex-1 ml-64 p-8 pt-6">
+        <div className="max-w-7xl mx-auto">
+          <div className="flex items-center justify-between mb-8">
+            <div>
+              <h1 className="text-2xl font-display font-bold text-white">
+                Admin Dashboard
+              </h1>
+              <p className="text-white/40">Platform analytics and management</p>
+            </div>
+          </div>
+
+          {activeTab === "analytics" && (
+            <div>
+              {dataLoading ? (
+                <div className="flex justify-center py-20">
+                  <div className="w-10 h-10 border-2 border-brand-orange/30 border-t-brand-orange rounded-full animate-spin" />
+                </div>
+              ) : analytics ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                  <div className="glass-card p-6">
+                    <div className="flex items-center gap-4">
+                      <div className="w-12 h-12 rounded-xl bg-brand-orange/20 flex items-center justify-center">
+                        <Mic2 className="w-6 h-6 text-brand-orange" />
+                      </div>
+                      <div>
+                        <p className="text-white/50 text-sm">Total Artists</p>
+                        <p className="text-2xl font-bold text-white">{analytics.totalArtists}</p>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <div className="glass-card p-6">
+                    <div className="flex items-center gap-4">
+                      <div className="w-12 h-12 rounded-xl bg-brand-pink/20 flex items-center justify-center">
+                        <Users className="w-6 h-6 text-brand-pink" />
+                      </div>
+                      <div>
+                        <p className="text-white/50 text-sm">Event Partners</p>
+                        <p className="text-2xl font-bold text-white">{analytics.totalPartners}</p>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <div className="glass-card p-6">
+                    <div className="flex items-center gap-4">
+                      <div className="w-12 h-12 rounded-xl bg-green-500/20 flex items-center justify-center">
+                        <Calendar className="w-6 h-6 text-green-500" />
+                      </div>
+                      <div>
+                        <p className="text-white/50 text-sm">Total Bookings</p>
+                        <p className="text-2xl font-bold text-white">{analytics.totalBookings}</p>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <div className="glass-card p-6">
+                    <div className="flex items-center gap-4">
+                      <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-brand-orange to-brand-pink flex items-center justify-center">
+                        <DollarSign className="w-6 h-6 text-white" />
+                      </div>
+                      <div>
+                        <p className="text-white/50 text-sm">Total Revenue</p>
+                        <p className="text-2xl font-bold gradient-text">₹{analytics.totalRevenue.toLocaleString()}</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="text-center py-20 text-white/50">No analytics data</div>
+              )}
+              
+              {analytics && (
+                  <div className="mt-6 glass-card p-6">
+                  <h3 className="text-lg font-semibold text-white mb-4">Earnings Breakdown</h3>
+                  <div className="grid grid-cols-2 gap-6">
+                    <div>
+                      <p className="text-white/50 text-sm">Total Revenue</p>
+                      <p className="text-xl font-bold text-white">₹{analytics.totalRevenue.toLocaleString()}</p>
+                    </div>
+                    <div>
+                      <p className="text-white/50 text-sm">Commission (30%)</p>
+                      <p className="text-xl font-bold gradient-text">₹{analytics.commission.toLocaleString()}</p>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {activeTab === "artists" && (
+            <div>
+              {dataLoading ? (
+                <div className="flex justify-center py-20">
+                  <div className="w-10 h-10 border-2 border-brand-orange/30 border-t-brand-orange rounded-full animate-spin" />
+                </div>
+              ) : artists.length > 0 ? (
+                <div className="overflow-x-auto">
+                  <table className="w-full">
+                    <thead>
+                      <tr className="border-b border-white/[0.06]">
+                        <th className="text-left py-4 px-4 text-white/50 text-sm font-medium">Artist</th>
+                        <th className="text-left py-4 px-4 text-white/50 text-sm font-medium">Email</th>
+                        <th className="text-left py-4 px-4 text-white/50 text-sm font-medium">Phone</th>
+                        <th className="text-left py-4 px-4 text-white/50 text-sm font-medium">Genre</th>
+                        <th className="text-left py-4 px-4 text-white/50 text-sm font-medium">Location</th>
+                        <th className="text-left py-4 px-4 text-white/50 text-sm font-medium">Rate</th>
+                        <th className="text-left py-4 px-4 text-white/50 text-sm font-medium">Registered</th>
+                        <th className="text-left py-4 px-4 text-white/50 text-sm font-medium">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {artists.map((artist) => (
+                        <tr key={artist._id} className="border-b border-white/[0.04] hover:bg-white/[0.02]">
+                          <td className="py-4 px-4">
+                            <div className="flex items-center gap-3">
+                              <div className="w-10 h-10 rounded-full overflow-hidden relative">
+                                <Image src={artist.image} alt={artist.name} fill className="object-cover" />
+                              </div>
+                              <div>
+                                <p className="text-white font-medium">{artist.name}</p>
+                                <p className="text-white/40 text-xs">{artist.bio || "No bio"}</p>
+                              </div>
+                            </div>
+                          </td>
+                          <td className="py-4 px-4 text-white/70">{artist.email}</td>
+                          <td className="py-4 px-4 text-white/70">{artist.phone || "-"}</td>
+                          <td className="py-4 px-4">
+                            <span className="px-2 py-1 rounded-full text-xs bg-brand-orange/20 text-brand-orange">{artist.genre}</span>
+                          </td>
+                          <td className="py-4 px-4 text-white/70">{artist.location}</td>
+                          <td className="py-4 px-4 text-white/70">₹{artist.price?.toLocaleString()}</td>
+                          <td className="py-4 px-4 text-white/50 text-sm">
+                            {new Date(artist.createdAt).toLocaleDateString()}
+                          </td>
+                          <td className="py-4 px-4">
+                            <div className="flex items-center gap-2">
+                              {!(artist as any).isVerified && (
+                                <button
+                                  onClick={async () => {
+                                    const token = localStorage.getItem("token");
+                                    await fetch("/api/admin/users", {
+                                      method: "PUT",
+                                      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+                                      body: JSON.stringify({ userId: artist._id, action: "verify", type: "artist" })
+                                    });
+                                    fetchData();
+                                  }}
+                                  className="p-2 rounded-lg bg-green-500/20 text-green-400 hover:bg-green-500/30"
+                                  title="Verify Artist"
+                                >
+                                  <CheckCircle className="w-4 h-4" />
+                                </button>
+                              )}
+                              <button
+                                onClick={() => handleViewProfile(artist._id, "artist")}
+                                className="p-2 rounded-lg bg-white/[0.04] hover:bg-white/[0.08] text-white/50 hover:text-white"
+                                title="View"
+                              >
+                                <Eye className="w-4 h-4" />
+                              </button>
+                              <button
+                                onClick={() => handleDelete(artist._id, "artist")}
+                                className="p-2 rounded-lg hover:bg-red-500/20 text-white/50 hover:text-red-400"
+                                title="Delete"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              ) : (
+                <div className="text-center py-20 glass-card">
+                  <p className="text-white/50 text-lg">No artists registered yet</p>
+                </div>
+              )}
+            </div>
+          )}
+
+          {activeTab === "partners" && (
+            <div>
+              {dataLoading ? (
+                <div className="flex justify-center py-20">
+                  <div className="w-10 h-10 border-2 border-brand-orange/30 border-t-brand-orange rounded-full animate-spin" />
+                </div>
+              ) : partners.length > 0 ? (
+                <div className="overflow-x-auto">
+                  <table className="w-full">
+                    <thead>
+                      <tr className="border-b border-white/[0.06]">
+                        <th className="text-left py-4 px-4 text-white/50 text-sm font-medium">Name</th>
+                        <th className="text-left py-4 px-4 text-white/50 text-sm font-medium">Email</th>
+                        <th className="text-left py-4 px-4 text-white/50 text-sm font-medium">Phone</th>
+                        <th className="text-left py-4 px-4 text-white/50 text-sm font-medium">Location</th>
+                        <th className="text-left py-4 px-4 text-white/50 text-sm font-medium">Registered</th>
+                        <th className="text-left py-4 px-4 text-white/50 text-sm font-medium">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {partners.map((partner) => (
+                        <tr key={partner._id} className="border-b border-white/[0.04] hover:bg-white/[0.02]">
+                          <td className="py-4 px-4 text-white font-medium">{partner.name}</td>
+                          <td className="py-4 px-4 text-white/70">{partner.email}</td>
+                          <td className="py-4 px-4 text-white/70">{partner.phone || "-"}</td>
+                          <td className="py-4 px-4 text-white/70">{partner.location || "-"}</td>
+                          <td className="py-4 px-4 text-white/50 text-sm">
+                            {new Date(partner.createdAt).toLocaleDateString()}
+                          </td>
+                          <td className="py-4 px-4">
+                            <div className="flex items-center gap-2">
+                              <button
+                                onClick={() => handleViewProfile(partner._id, "partner")}
+                                className="p-2 rounded-lg bg-white/[0.04] hover:bg-white/[0.08] text-white/50 hover:text-white"
+                                title="View"
+                              >
+                                <Eye className="w-4 h-4" />
+                              </button>
+                              <button
+                                onClick={() => handleDelete(partner._id, "partner")}
+                                className="p-2 rounded-lg hover:bg-red-500/20 text-white/50 hover:text-red-400"
+                                title="Delete"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              ) : (
+                <div className="text-center py-20 glass-card">
+                  <p className="text-white/50 text-lg">No event partners registered yet</p>
+                </div>
+              )}
+            </div>
+          )}
+
+          {activeTab === "bookings" && (
+            <div>
+              {dataLoading ? (
+                <div className="flex justify-center py-20">
+                  <div className="w-10 h-10 border-2 border-brand-orange/30 border-t-brand-orange rounded-full animate-spin" />
+                </div>
+              ) : bookings.length > 0 ? (
+                <div className="overflow-x-auto">
+                  <table className="w-full">
+                    <thead>
+                      <tr className="border-b border-white/[0.06]">
+                        <th className="text-left py-4 px-4 text-white/50 text-sm font-medium">Event</th>
+                        <th className="text-left py-4 px-4 text-white/50 text-sm font-medium">Artist</th>
+                        <th className="text-left py-4 px-4 text-white/50 text-sm font-medium">Organizer</th>
+                        <th className="text-left py-4 px-4 text-white/50 text-sm font-medium">Date</th>
+                        <th className="text-left py-4 px-4 text-white/50 text-sm font-medium">Venue</th>
+                        <th className="text-left py-4 px-4 text-white/50 text-sm font-medium">Amount</th>
+                        <th className="text-left py-4 px-4 text-white/50 text-sm font-medium">Status</th>
+                        <th className="text-left py-4 px-4 text-white/50 text-sm font-medium">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {bookings.map((booking) => (
+                        <tr key={booking._id} className="border-b border-white/[0.04] hover:bg-white/[0.02]">
+                          <td className="py-4 px-4 text-white font-medium">{booking.eventName}</td>
+                          <td className="py-4 px-4">
+                            <div className="flex items-center gap-3">
+                              {booking.artistId?.image && (
+                                <div className="w-8 h-8 rounded-full overflow-hidden relative">
+                                  <Image src={booking.artistId.image} alt="" fill className="object-cover" />
+                                </div>
+                              )}
+                              <span className="text-white/70">{booking.artistId?.name || "N/A"}</span>
+                            </div>
+                          </td>
+                          <td className="py-4 px-4 text-white/70">{booking.organizerEmail}</td>
+                          <td className="py-4 px-4 text-white/70">
+                            {new Date(booking.date).toLocaleDateString()}
+                          </td>
+                          <td className="py-4 px-4 text-white/70">{booking.venue}</td>
+                          <td className="py-4 px-4 text-white/70">₹{booking.budget?.toLocaleString()}</td>
+                          <td className="py-4 px-4">
+                            <span className={`px-2 py-1 rounded-full text-xs ${
+                              booking.status === "completed" ? "bg-green-500/20 text-green-400" :
+                              booking.status === "accepted" ? "bg-blue-500/20 text-blue-400" :
+                              booking.status === "pending" ? "bg-yellow-500/20 text-yellow-400" :
+                              "bg-red-500/20 text-red-400"
+                            }`}>
+                              {booking.status}
+                            </span>
+                          </td>
+                          <td className="py-4 px-4">
+                            <button
+                              onClick={() => handleDelete(booking._id, "booking")}
+                              className="p-2 rounded-lg hover:bg-red-500/20 text-white/50 hover:text-red-400"
+                              title="Delete"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              ) : (
+                <div className="text-center py-20 glass-card">
+                  <p className="text-white/50 text-lg">No bookings yet</p>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Payouts Tab */}
+          {activeTab === "payouts" && (
+            <div>
+              {dataLoading ? (
+                <div className="flex justify-center py-20">
+                  <div className="w-10 h-10 border-2 border-brand-orange/30 border-t-brand-orange rounded-full animate-spin" />
+                </div>
+              ) : payoutSummary ? (
+                <div>
+                  <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+                    <div className="glass-card p-6">
+                      <p className="text-white/40 text-sm mb-1">Total Revenue</p>
+                      <p className="text-2xl font-bold gradient-text">₹{payoutSummary.totalRevenue.toLocaleString()}</p>
+                    </div>
+                    <div className="glass-card p-6">
+                      <p className="text-white/40 text-sm mb-1">Total Commission (30%)</p>
+                      <p className="text-2xl font-bold text-green-400">₹{payoutSummary.totalCommission.toLocaleString()}</p>
+                    </div>
+                    <div className="glass-card p-6">
+                      <p className="text-white/40 text-sm mb-1">Pending Payouts</p>
+                      <p className="text-2xl font-bold text-brand-orange">₹{payoutSummary.pendingPayouts.toLocaleString()}</p>
+                    </div>
+                    <div className="glass-card p-6">
+                      <p className="text-white/40 text-sm mb-1">Completed Payouts</p>
+                      <p className="text-2xl font-bold text-white">₹{payoutSummary.completedPayouts.toLocaleString()}</p>
+                    </div>
+                  </div>
+
+                  <div className="glass-card p-6">
+                    <h3 className="text-lg font-semibold text-white mb-4">Payout Instructions</h3>
+                    <div className="space-y-3 text-white/60 text-sm">
+                      <p>• Admin manually processes payouts to artists via UPI/Bank Transfer</p>
+                      <p>• After artist completes the event, mark payout as "Paid"</p>
+                      <p>• Track all payouts in this section</p>
+                      <p>• Commission is automatically calculated (30% of booking amount)</p>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="text-center py-20 text-white/50">No payout data</div>
+              )}
+            </div>
+          )}
+        </div>
+      </main>
+
+      {selectedProfile && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="glass-card max-w-lg w-full p-6 max-h-[80vh] overflow-y-auto">
+            <div className="flex justify-between items-center mb-6">
+              <h2 className="text-xl font-bold text-white">
+                {selectedProfile.type === "artist" ? "Artist Details" : "Partner Details"}
+              </h2>
+              <button
+                onClick={() => setSelectedProfile(null)}
+                className="p-2 rounded-lg hover:bg-white/[0.08] text-white/50 hover:text-white"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+
+            {selectedProfile.type === "artist" ? (
+              <div className="space-y-4">
+                <div className="flex items-center gap-4">
+                  <div className="w-20 h-20 rounded-full overflow-hidden relative">
+                    <Image src={(selectedProfile.data as Artist).image} alt="" fill className="object-cover" />
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-bold text-white">{(selectedProfile.data as Artist).name}</h3>
+                    <p className="text-white/50">{(selectedProfile.data as Artist).email}</p>
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <p className="text-white/40 text-sm">Phone</p>
+                    <p className="text-white">{(selectedProfile.data as Artist).phone || "N/A"}</p>
+                  </div>
+                  <div>
+                    <p className="text-white/40 text-sm">Location</p>
+                    <p className="text-white">{(selectedProfile.data as Artist).location}</p>
+                  </div>
+                  <div>
+                    <p className="text-white/40 text-sm">Genre</p>
+                    <p className="text-white">{(selectedProfile.data as Artist).genre}</p>
+                  </div>
+                  <div>
+                    <p className="text-white/40 text-sm">Price</p>
+                    <p className="text-white">₹{(selectedProfile.data as Artist).price?.toLocaleString()}</p>
+                  </div>
+                  <div>
+                    <p className="text-white/40 text-sm">Rating</p>
+                    <p className="text-white">{(selectedProfile.data as Artist).rating || 0}/5</p>
+                  </div>
+                  <div>
+                    <p className="text-white/40 text-sm">Available</p>
+                    <p className="text-white">{(selectedProfile.data as Artist).isAvailable ? "Yes" : "No"}</p>
+                  </div>
+                </div>
+                <div>
+                  <p className="text-white/40 text-sm">Bio</p>
+                  <p className="text-white">{(selectedProfile.data as Artist).bio || "No bio available"}</p>
+                </div>
+                {(selectedProfile.data as Artist).languages && (selectedProfile.data as Artist).languages!.length > 0 && (
+                  <div>
+                    <p className="text-white/40 text-sm">Languages</p>
+                    <div className="flex flex-wrap gap-2 mt-1">
+                      {(selectedProfile.data as Artist).languages!.map((lang, i) => (
+                        <span key={i} className="px-2 py-1 rounded-full text-xs bg-brand-orange/20 text-brand-orange">{lang}</span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                {(selectedProfile.data as Artist).socialLinks && (
+                  <div>
+                    <p className="text-white/40 text-sm mb-2">Social Links</p>
+                    <div className="flex gap-4">
+                      {(selectedProfile.data as Artist).socialLinks!.instagram && (
+                        <a href={(selectedProfile.data as Artist).socialLinks?.instagram} target="_blank" className="text-brand-orange hover:underline">Instagram</a>
+                      )}
+                      {(selectedProfile.data as Artist).socialLinks!.youtube && (
+                        <a href={(selectedProfile.data as Artist).socialLinks?.youtube} target="_blank" className="text-brand-orange hover:underline">YouTube</a>
+                      )}
+                      {(selectedProfile.data as Artist).socialLinks!.website && (
+                        <a href={(selectedProfile.data as Artist).socialLinks?.website} target="_blank" className="text-brand-orange hover:underline">Website</a>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className="space-y-4">
+                <div>
+                  <p className="text-white/40 text-sm">Name</p>
+                  <p className="text-white text-lg font-medium">{(selectedProfile.data as Partner).name}</p>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <p className="text-white/40 text-sm">Email</p>
+                    <p className="text-white">{(selectedProfile.data as Partner).email}</p>
+                  </div>
+                  <div>
+                    <p className="text-white/40 text-sm">Phone</p>
+                    <p className="text-white">{(selectedProfile.data as Partner).phone || "N/A"}</p>
+                  </div>
+                  <div>
+                    <p className="text-white/40 text-sm">Location</p>
+                    <p className="text-white">{(selectedProfile.data as Partner).location || "N/A"}</p>
+                  </div>
+                  <div>
+                    <p className="text-white/40 text-sm">Registered On</p>
+                    <p className="text-white">{new Date((selectedProfile.data as Partner).createdAt).toLocaleDateString()}</p>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
