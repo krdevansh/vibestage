@@ -13,6 +13,7 @@ export interface IUser extends Document {
   blockedAt: Date;
   companyName?: string;
   companyLogo?: string;
+  profileImage?: string;
   createdAt: Date;
 }
 
@@ -34,6 +35,7 @@ const UserSchema = new Schema<IUser>(
     blockedAt: { type: Date },
     companyName: { type: String, default: "" },
     companyLogo: { type: String, default: "" },
+    profileImage: { type: String, default: "" },
   },
   { timestamps: true }
 );
