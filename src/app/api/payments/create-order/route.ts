@@ -6,10 +6,15 @@ import jwt from "jsonwebtoken";
 
 const JWT_SECRET = process.env.JWT_SECRET || "vibestage_dev_secret";
 
-const razorpay = new Razorpay({
-  key_id: process.env.RAZORPAY_KEY_ID || "",
-  key_secret: process.env.RAZORPAY_KEY_SECRET || "",
-});
+const getRazorpay = () => {
+  if (!process.env.RAZORPAY_KEY_ID || !process.env.RAZORPAY_KEY_SECRET) {
+    return null;
+  }
+  return new Razorpay({
+    key_id: process.env.RAZORPAY_KEY_ID,
+    key_secret: process.env.RAZORPAY_KEY_SECRET,
+  });
+};
 
 function getUserFromToken(request: NextRequest) {
   const token = request.headers.get("authorization")?.replace("Bearer ", "");
@@ -46,6 +51,11 @@ export async function POST(request: NextRequest) {
     }
 
     const orderAmount = amount || booking.finalPrice;
+
+    const razorpay = getRazorpay();
+    if (!razorpay) {
+      return NextResponse.json({ success: false, error: "Payment system not configured" }, { status: 500 });
+    }
 
     const order = await razorpay.orders.create({
       amount: orderAmount * 100,

@@ -1,10 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
+import crypto from "crypto";
 import connectDB from "@/lib/mongodb";
 import Booking from "@/models/Booking";
 import Notification from "@/models/Notification";
 import jwt from "jsonwebtoken";
 
 const JWT_SECRET = process.env.JWT_SECRET || "vibestage_dev_secret";
+const RAZORPAY_SECRET = process.env.RAZORPAY_KEY_SECRET || "";
 
 function getUserFromToken(request: NextRequest) {
   const token = request.headers.get("authorization")?.replace("Bearer ", "");
@@ -25,7 +27,18 @@ export async function POST(request: NextRequest) {
 
     await connectDB();
     const body = await request.json();
-    const { bookingId, razorpayPaymentId, razorpayOrderId } = body;
+    const { bookingId, razorpayPaymentId, razorpayOrderId, razorpaySignature } = body;
+
+    if (razorpaySignature && RAZORPAY_SECRET) {
+      const generatedSignature = crypto
+        .createHmac("sha256", RAZORPAY_SECRET)
+        .update(`${razorpayOrderId}|${razorpayPaymentId}`)
+        .digest("hex");
+      
+      if (generatedSignature !== razorpaySignature) {
+        return NextResponse.json({ success: false, error: "Invalid payment signature" }, { status: 400 });
+      }
+    }
 
     const booking = await Booking.findById(bookingId);
     if (!booking) {
