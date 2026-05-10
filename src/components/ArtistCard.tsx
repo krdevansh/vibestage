@@ -28,7 +28,7 @@ export default function ArtistCard({ artist, index, showPrice = false }: ArtistC
     const userStr = localStorage.getItem("user");
     if (userStr) {
       const user = JSON.parse(userStr);
-      if (user.role === "event_partner" || user.role === "admin") {
+      if (user.role === "event_partner") {
         setCanBook(true);
       }
     }
@@ -115,7 +115,7 @@ export default function ArtistCard({ artist, index, showPrice = false }: ArtistC
               <span className="text-white/60">{artist.location}</span>
             </div>
           )}
-          {canBook ? (
+          {canBook && (
             <button
               className="px-4 py-2 rounded-full text-xs font-semibold text-white
                          bg-white/[0.06] border border-white/10
@@ -124,16 +124,6 @@ export default function ArtistCard({ artist, index, showPrice = false }: ArtistC
               id={`book-${artist._id}`}
             >
               Book Now
-            </button>
-          ) : (
-            <button
-              onClick={handleBookClick}
-              className="px-4 py-2 rounded-full text-xs font-semibold text-brand-orange
-                         bg-brand-orange/10 border border-brand-orange/20
-                         hover:bg-brand-orange/20 transition-all duration-300"
-              id={`book-${artist._id}`}
-            >
-              Sign in to Book
             </button>
           )}
         </div>
