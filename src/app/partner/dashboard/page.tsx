@@ -1,12 +1,12 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
 import { 
   LayoutDashboard, User, Music, Calendar, Bell, DollarSign, 
-  Plus, ChevronRight, LogOut, Check, X, Search, MapPin, Eye, Star
+  Plus, ChevronRight, LogOut, Check, X, Search, MapPin, Eye, Star, Settings, Upload
 } from "lucide-react";
 import ArtistCard, { Artist } from "@/components/ArtistCard";
 
@@ -59,6 +59,12 @@ export default function PartnerDashboard() {
   const [searchQuery, setSearchQuery] = useState("");
   const [bookingLoading, setBookingLoading] = useState(false);
   const [bookingSuccess, setBookingSuccess] = useState("");
+  const [bookingError, setBookingError] = useState("");
+  const [partnerProfile, setPartnerProfile] = useState<any>(null);
+  const [profileForm, setProfileForm] = useState({ name: "", phone: "", location: "", companyName: "", profileImage: "" });
+  const [savingProfile, setSavingProfile] = useState(false);
+  const [profileMsg, setProfileMsg] = useState("");
+  const profileFileRef = useRef<HTMLInputElement>(null);
   const [payingBooking, setPayingBooking] = useState<string | null>(null);
   const [paymentSuccess, setPaymentSuccess] = useState("");
   const [reviewForm, setReviewForm] = useState({ rating: 5, comment: "" });
@@ -88,6 +94,22 @@ export default function PartnerDashboard() {
       const artistsData = await artistsRes.json();
       if (artistsData.success) {
         setArtists(artistsData.data);
+      }
+
+      // Fetch partner profile
+      const profileRes = await fetch("/api/partner/profile", {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      const profileData = await profileRes.json();
+      if (profileData.success) {
+        setPartnerProfile(profileData.data);
+        setProfileForm({
+          name: profileData.data.name || "",
+          phone: profileData.data.phone || "",
+          location: profileData.data.location || "",
+          companyName: profileData.data.companyName || "",
+          profileImage: profileData.data.profileImage || ""
+        });
       }
     } catch (error) {
       console.error("Error fetching data:", error);
@@ -127,6 +149,7 @@ export default function PartnerDashboard() {
 
     setBookingLoading(true);
     setBookingSuccess("");
+    setBookingError("");
 
     try {
       const res = await fetch("/api/partner/bookings", {
@@ -144,9 +167,12 @@ export default function PartnerDashboard() {
         setSelectedArtist(null);
         fetchData();
         setTimeout(() => setBookingSuccess(""), 3000);
+      } else {
+        setBookingError(data.error || "Failed to create booking");
       }
     } catch (error) {
       console.error("Error creating booking:", error);
+      setBookingError("Network error. Please try again.");
     } finally {
       setBookingLoading(false);
     }
@@ -258,6 +284,55 @@ export default function PartnerDashboard() {
     }
   };
 
+  const handleProfileImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = async () => {
+      try {
+        const res = await fetch("/api/upload", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ file: reader.result, folder: "profile" })
+        });
+        const data = await res.json();
+        if (data.success) {
+          setProfileForm({ ...profileForm, profileImage: data.url });
+        }
+      } catch (err) {
+        console.error("Upload error:", err);
+      }
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const savePartnerProfile = async () => {
+    const token = localStorage.getItem("token");
+    if (!token) return;
+
+    setSavingProfile(true);
+    setProfileMsg("");
+
+    try {
+      const res = await fetch("/api/partner/profile", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify(profileForm)
+      });
+      const data = await res.json();
+      if (data.success) {
+        setPartnerProfile(data.data);
+        setProfileMsg("Profile updated successfully!");
+        setTimeout(() => setProfileMsg(""), 3000);
+      }
+    } catch (error) {
+      console.error("Error saving profile:", error);
+    } finally {
+      setSavingProfile(false);
+    }
+  };
+
   const filteredArtists = artists.filter((a: any) => 
     a.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
     a.genre.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -298,6 +373,7 @@ export default function PartnerDashboard() {
             { id: "browse", icon: Music, label: "Browse Artists" },
             { id: "create", icon: Plus, label: "Create Event" },
             { id: "bookings", icon: Calendar, label: "My Bookings" },
+            { id: "profile", icon: Settings, label: "Profile" },
             { id: "history", icon: ChevronRight, label: "History" },
           ].map((item) => (
             <button
@@ -659,6 +735,98 @@ export default function PartnerDashboard() {
                 <button onClick={() => setActiveTab("browse")} className="btn-primary mt-4">Browse Artists</button>
               </div>
             )}
+          </div>
+        )}
+
+        {/* Profile Tab */}
+        {activeTab === "profile" && (
+          <div className="max-w-3xl">
+            <h2 className="text-2xl font-display font-bold text-white mb-6">Profile Settings</h2>
+            
+            {profileMsg && (
+              <div className="mb-6 p-4 rounded-xl bg-green-500/10 text-green-400">{profileMsg}</div>
+            )}
+
+            <div className="space-y-6">
+              {/* Profile Picture */}
+              <div className="glass-card p-6">
+                <h3 className="text-lg font-semibold text-white mb-4">Profile Picture</h3>
+                <div className="flex items-center gap-6">
+                  <div className="relative w-24 h-24 rounded-full overflow-hidden border-2 border-brand-orange group">
+                    {profileForm.profileImage ? (
+                      <Image src={profileForm.profileImage} alt="Profile" fill className="object-cover" />
+                    ) : (
+                      <div className="w-full h-full bg-white/[0.04] flex items-center justify-center">
+                        <User className="w-8 h-8 text-white/30" />
+                      </div>
+                    )}
+                    <div className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                      <Upload className="w-6 h-6 text-white" />
+                    </div>
+                  </div>
+                  <input
+                    ref={profileFileRef}
+                    type="file"
+                    accept="image/*"
+                    onChange={handleProfileImageUpload}
+                    className="hidden"
+                  />
+                  <button
+                    onClick={() => profileFileRef.current?.click()}
+                    className="px-4 py-2 rounded-xl bg-brand-gradient text-white text-sm font-medium"
+                  >
+                    Upload Photo
+                  </button>
+                </div>
+              </div>
+
+              {/* Basic Info */}
+              <div className="glass-card p-6">
+                <h3 className="text-lg font-semibold text-white mb-4">Basic Information</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm text-white/40 mb-1.5">Full Name</label>
+                    <input 
+                      type="text" 
+                      value={profileForm.name} 
+                      onChange={(e) => setProfileForm({ ...profileForm, name: e.target.value })} 
+                      className="w-full px-4 py-3 rounded-xl bg-white/[0.04] border border-white/[0.08] text-white" 
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm text-white/40 mb-1.5">Phone Number</label>
+                    <input 
+                      type="text" 
+                      value={profileForm.phone} 
+                      onChange={(e) => setProfileForm({ ...profileForm, phone: e.target.value })} 
+                      className="w-full px-4 py-3 rounded-xl bg-white/[0.04] border border-white/[0.08] text-white" 
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm text-white/40 mb-1.5">Location</label>
+                    <input 
+                      type="text" 
+                      value={profileForm.location} 
+                      onChange={(e) => setProfileForm({ ...profileForm, location: e.target.value })} 
+                      className="w-full px-4 py-3 rounded-xl bg-white/[0.04] border border-white/[0.08] text-white" 
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm text-white/40 mb-1.5">Company Name</label>
+                    <input 
+                      type="text" 
+                      value={profileForm.companyName} 
+                      onChange={(e) => setProfileForm({ ...profileForm, companyName: e.target.value })} 
+                      className="w-full px-4 py-3 rounded-xl bg-white/[0.04] border border-white/[0.08] text-white" 
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <button onClick={savePartnerProfile} disabled={savingProfile} className="btn-primary w-full">
+                <span>{savingProfile ? "Saving..." : "Save Profile"}</span>
+              </button>
+            </div>
           </div>
         )}
 
