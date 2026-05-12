@@ -9,11 +9,14 @@ export interface IUser extends Document {
   role: "artist" | "event_partner" | "admin";
   isDeleted: boolean;
   isVerified: boolean;
+  isEmailVerified: boolean;
   isBlocked: boolean;
   blockedAt: Date;
   companyName?: string;
   companyLogo?: string;
   profileImage?: string;
+  otp?: string;
+  otpExpires?: Date;
   createdAt: Date;
 }
 
@@ -31,11 +34,14 @@ const UserSchema = new Schema<IUser>(
     },
     isDeleted: { type: Boolean, default: false },
     isVerified: { type: Boolean, default: false },
+    isEmailVerified: { type: Boolean, default: false },
     isBlocked: { type: Boolean, default: false },
     blockedAt: { type: Date },
     companyName: { type: String, default: "" },
     companyLogo: { type: String, default: "" },
     profileImage: { type: String, default: "" },
+    otp: { type: String, default: "" },
+    otpExpires: { type: Date },
   },
   { timestamps: true }
 );

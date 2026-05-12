@@ -94,10 +94,10 @@ export default function HeroSection() {
             </Link>
           )}
           <Link href="/login?role=artist" className="btn-secondary text-lg !px-10 !py-4" id="hero-cta-artist">
-            <span>Join as Artist</span>
+            <span>Login as Artist</span>
           </Link>
           <Link href="/login?role=partner" className="btn-secondary text-lg !px-10 !py-4" id="hero-cta-partner">
-            <span>Join as Organizer</span>
+            <span>Login as Organizer</span>
           </Link>
         </div>
 
