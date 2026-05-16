@@ -65,6 +65,7 @@ export default function PartnerDashboard() {
   const [savingProfile, setSavingProfile] = useState(false);
   const [profileMsg, setProfileMsg] = useState("");
   const profileFileRef = useRef<HTMLInputElement>(null);
+  const [uploading, setUploading] = useState(false);
   const [payingBooking, setPayingBooking] = useState<string | null>(null);
   const [paymentSuccess, setPaymentSuccess] = useState("");
   const [reviewForm, setReviewForm] = useState({ rating: 5, comment: "" });
@@ -290,6 +291,7 @@ export default function PartnerDashboard() {
 
     const reader = new FileReader();
     reader.onload = async () => {
+      setUploading(true);
       try {
         const token = localStorage.getItem("token");
         const res = await fetch("/api/upload", {
@@ -303,9 +305,14 @@ export default function PartnerDashboard() {
         const data = await res.json();
         if (data.success) {
           setProfileForm({ ...profileForm, profileImage: data.url });
+        } else {
+          alert(data.error || "Failed to upload image. It might be too large.");
         }
       } catch (err) {
         console.error("Upload error:", err);
+        alert("Upload failed. The image might be too large (must be under 1MB).");
+      } finally {
+        setUploading(false);
       }
     };
     reader.readAsDataURL(file);
@@ -777,9 +784,10 @@ export default function PartnerDashboard() {
                   />
                   <button
                     onClick={() => profileFileRef.current?.click()}
+                    disabled={uploading}
                     className="px-4 py-2 rounded-xl bg-brand-gradient text-white text-sm font-medium"
                   >
-                    Upload Photo
+                    {uploading ? "Uploading..." : "Upload Photo"}
                   </button>
                 </div>
               </div>

@@ -92,7 +92,7 @@ export default function ArtistDashboard() {
     coverImage: "", videoUrl: ""
   });
   const [gallery, setGallery] = useState<string[]>([]);
-  const [uploading, setUploading] = useState(false);
+  const [uploading, setUploading] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [successMsg, setSuccessMsg] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -160,7 +160,7 @@ export default function ArtistDashboard() {
 
     const reader = new FileReader();
     reader.onload = async () => {
-      setUploading(true);
+      setUploading(type);
       try {
         const token = localStorage.getItem("token");
         const res = await fetch("/api/upload", {
@@ -181,10 +181,14 @@ export default function ArtistDashboard() {
             setGallery([...gallery, data.url]);
           }
         }
+        if (!data.success) {
+          alert(data.error || "Failed to upload image. It might be too large.");
+        }
       } catch (err) {
         console.error("Upload error:", err);
+        alert("Upload failed. The image might be too large (must be under 1MB).");
       } finally {
-        setUploading(false);
+        setUploading(null);
       }
     };
     reader.readAsDataURL(file);
@@ -466,10 +470,10 @@ export default function ArtistDashboard() {
                   />
                   <button
                     onClick={() => fileInputRef.current?.click()}
-                    disabled={uploading}
+                    disabled={uploading !== null}
                     className="px-4 py-2 rounded-xl bg-brand-gradient text-white text-sm font-medium"
                   >
-                    {uploading ? "Uploading..." : "Upload Photo"}
+                    {uploading === "profile" ? "Uploading..." : "Upload Photo"}
                   </button>
                 </div>
               </div>
@@ -497,10 +501,10 @@ export default function ArtistDashboard() {
                   />
                   <button
                     onClick={() => coverInputRef.current?.click()}
-                    disabled={uploading}
+                    disabled={uploading !== null}
                     className="absolute bottom-3 right-3 px-3 py-1.5 rounded-lg bg-brand-gradient text-white text-xs font-medium"
                   >
-                    {uploading ? "Uploading..." : "Upload Cover"}
+                    {uploading === "cover" ? "Uploading..." : "Upload Cover"}
                   </button>
                 </div>
               </div>
@@ -529,9 +533,10 @@ export default function ArtistDashboard() {
                     accept="image/*"
                     onChange={(e) => handleImageUpload(e, "gallery")}
                     className="hidden"
-                    disabled={uploading}
+                    disabled={uploading !== null}
                   />
                 </label>
+                {uploading === "gallery" && <p className="text-center text-sm text-brand-orange mt-2">Uploading...</p>}
               </div>
 
               {/* Basic Info */}
