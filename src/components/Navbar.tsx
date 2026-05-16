@@ -53,7 +53,7 @@ export default function Navbar() {
         </Link>
 
         {/* Desktop Links */}
-        <div className="hidden md:flex items-center gap-8">
+        <div className="hidden md:flex items-center gap-6">
           {NAV_LINKS.map((link) => (
             <Link
               key={link.label}
@@ -64,8 +64,11 @@ export default function Navbar() {
               {link.label}
             </Link>
           ))}
-          <Link href="/login?role=admin" className="btn-secondary !py-2.5 !px-6 !text-sm" id="nav-cta">
-            <span>Login as Admin</span>
+          <Link href="/login?role=partner" className="btn-primary !py-2.5 !px-5 !text-sm" id="nav-cta-partner">
+            <span>Book Now</span>
+          </Link>
+          <Link href="/login?role=artist" className="btn-secondary !py-2.5 !px-5 !text-sm" id="nav-cta-artist">
+            <span>Login as Artist</span>
           </Link>
         </div>
 
@@ -112,19 +115,45 @@ export default function Navbar() {
               {link.label}
             </Link>
           ))}
-          <Link
-            href="/login?role=admin"
-            onClick={() => setMobileOpen(false)}
-            className={`btn-secondary mt-4 transition-all duration-300 ${
-              mobileOpen
-                ? "translate-y-0 opacity-100"
-                : "translate-y-8 opacity-0"
-            }`}
-            style={{ transitionDelay: "520ms" }}
-            id="mobile-nav-cta"
-          >
-            <span>Login as Admin</span>
-          </Link>
+          <div className="flex flex-col gap-3 mt-4 w-full max-w-xs">
+            <Link
+              href="/login?role=partner"
+              onClick={() => setMobileOpen(false)}
+              className={`btn-primary !py-3 !text-sm text-center transition-all duration-300 ${
+                mobileOpen
+                  ? "translate-y-0 opacity-100"
+                  : "translate-y-8 opacity-0"
+              }`}
+              style={{ transitionDelay: "520ms" }}
+            >
+              Login as Organizer
+            </Link>
+            <Link
+              href="/login?role=artist"
+              onClick={() => setMobileOpen(false)}
+              className={`btn-secondary !py-3 !text-sm text-center transition-all duration-300 ${
+                mobileOpen
+                  ? "translate-y-0 opacity-100"
+                  : "translate-y-8 opacity-0"
+              }`}
+              style={{ transitionDelay: "580ms" }}
+            >
+              Login as Artist
+            </Link>
+            <Link
+              href="/login?role=admin"
+              onClick={() => setMobileOpen(false)}
+              className={`text-sm text-white/40 hover:text-white text-center transition-all duration-300 ${
+                mobileOpen
+                  ? "translate-y-0 opacity-100"
+                  : "translate-y-8 opacity-0"
+              }`}
+              style={{ transitionDelay: "640ms" }}
+              id="mobile-nav-cta"
+            >
+              Admin Login
+            </Link>
+          </div>
         </div>
       </div>
     </header>
