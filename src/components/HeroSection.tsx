@@ -101,23 +101,6 @@ export default function HeroSection() {
           </Link>
         </div>
 
-        {/* Stats bar */}
-        <div className="mt-20 flex flex-wrap items-center justify-center gap-8 md:gap-16 opacity-0 animate-fade-in animate-delay-700">
-          {[
-            { value: "2,500+", label: "Artists" },
-            { value: "10K+", label: "Events" },
-            { value: "50+", label: "Cities" },
-          ].map((stat) => (
-            <div key={stat.label} className="text-center">
-              <div className="text-2xl md:text-3xl font-display font-bold gradient-text">
-                {stat.value}
-              </div>
-              <div className="text-xs text-white/30 uppercase tracking-widest mt-1">
-                {stat.label}
-              </div>
-            </div>
-          ))}
-        </div>
       </div>
 
       {/* Bottom gradient fade */}
