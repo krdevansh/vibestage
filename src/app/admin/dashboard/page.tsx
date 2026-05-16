@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
-import { Users, Mic2, Calendar, DollarSign, LogOut, Eye, Trash2, ChevronLeft, CreditCard, CheckCircle, XCircle } from "lucide-react";
+import { Users, Mic2, Calendar, DollarSign, LogOut, Eye, Trash2, ChevronLeft, CreditCard, CheckCircle, XCircle, Bell, Check, X, AlertTriangle } from "lucide-react";
 
 interface User {
   id: string;
@@ -83,7 +83,17 @@ interface Analytics {
   commission: number;
 }
 
-type Tab = "analytics" | "artists" | "partners" | "bookings" | "payouts";
+interface AdminNotification {
+  _id: string;
+  type: string;
+  title: string;
+  message: string;
+  isRead: boolean;
+  createdAt: string;
+  bookingId?: string;
+}
+
+type Tab = "analytics" | "artists" | "partners" | "bookings" | "payouts" | "notifications";
 
 export default function AdminDashboard() {
   const router = useRouter();
@@ -100,6 +110,8 @@ export default function AdminDashboard() {
   const [dataLoading, setDataLoading] = useState(false);
   const [selectedProfile, setSelectedProfile] = useState<ProfileData | null>(null);
   const [profileLoading, setProfileLoading] = useState(false);
+  const [adminNotifications, setAdminNotifications] = useState<AdminNotification[]>([]);
+  const [adminUnreadCount, setAdminUnreadCount] = useState(0);
 
   useEffect(() => {
     const checkAuth = () => {
@@ -125,8 +137,26 @@ export default function AdminDashboard() {
   useEffect(() => {
     if (!loading && user) {
       fetchData();
+      fetchNotifications();
     }
   }, [loading, activeTab, user]);
+
+  const fetchNotifications = async () => {
+    const token = localStorage.getItem("token");
+    if (!token) return;
+    try {
+      const res = await fetch("/api/admin/notifications", {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      const data = await res.json();
+      if (data.success) {
+        setAdminNotifications(data.data.notifications);
+        setAdminUnreadCount(data.data.unreadCount);
+      }
+    } catch (error) {
+      console.error("Fetch notifications error:", error);
+    }
+  };
 
   const fetchData = async () => {
     setDataLoading(true);
@@ -151,6 +181,8 @@ export default function AdminDashboard() {
         const res = await fetch("/api/admin/payouts?action=summary");
         const data = await res.json();
         if (data.success) setPayoutSummary(data.data);
+      } else if (activeTab === "notifications") {
+        await fetchNotifications();
       }
     } catch (error) {
       console.error("Fetch error:", error);
@@ -212,6 +244,7 @@ export default function AdminDashboard() {
     { id: "partners", label: "Partners", icon: Users },
     { id: "bookings", label: "Bookings", icon: Calendar },
     { id: "payouts", label: "Payouts", icon: CreditCard },
+    { id: "notifications", label: "Notifications", icon: Bell },
   ];
 
   return (
@@ -238,6 +271,9 @@ export default function AdminDashboard() {
               >
                 <tab.icon className="w-5 h-5" />
                 {tab.label}
+                {tab.id === "notifications" && adminUnreadCount > 0 && (
+                  <span className="ml-auto bg-brand-pink text-white text-xs px-2 py-0.5 rounded-full">{adminUnreadCount}</span>
+                )}
               </button>
             ))}
           </nav>
@@ -687,6 +723,133 @@ export default function AdminDashboard() {
                 </div>
               ) : (
                 <div className="text-center py-20 text-white/50">No payout data</div>
+              )}
+            </div>
+          )}
+
+          {/* Notifications Tab */}
+          {activeTab === "notifications" && (
+            <div>
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-2xl font-display font-bold text-white">Notifications</h2>
+                {adminUnreadCount > 0 && (
+                  <button
+                    onClick={async () => {
+                      const token = localStorage.getItem("token");
+                      await fetch("/api/admin/notifications", {
+                        method: "PUT",
+                        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+                        body: JSON.stringify({})
+                      });
+                      fetchNotifications();
+                    }}
+                    className="px-4 py-2 rounded-lg bg-white/[0.04] text-white/60 hover:text-white text-sm"
+                  >
+                    Mark All Read
+                  </button>
+                )}
+              </div>
+
+              {adminNotifications.length > 0 ? (
+                <div className="space-y-3">
+                  {adminNotifications.map((notif) => (
+                    <div
+                      key={notif._id}
+                      onClick={async () => {
+                        if (!notif.isRead) {
+                          const token = localStorage.getItem("token");
+                          await fetch("/api/admin/notifications", {
+                            method: "PUT",
+                            headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+                            body: JSON.stringify({ notificationId: notif._id })
+                          });
+                          fetchNotifications();
+                        }
+                      }}
+                      className={`glass-card p-4 cursor-pointer transition-all ${
+                        !notif.isRead ? "border-l-4 border-l-brand-orange" : ""
+                      }`}
+                    >
+                      <div className="flex items-start justify-between">
+                        <div>
+                          <p className="text-white font-medium">{notif.title}</p>
+                          <p className="text-sm text-white/60 mt-1">{notif.message}</p>
+                          <p className="text-xs text-white/30 mt-2">{new Date(notif.createdAt).toLocaleString()}</p>
+                        </div>
+                        {!notif.isRead && (
+                          <span className="w-2 h-2 rounded-full bg-brand-orange flex-shrink-0 mt-2" />
+                        )}
+                      </div>
+
+                      {/* Delete request actions */}
+                      {notif.title === "Account Deletion Request" && (
+                        <div className="flex gap-2 mt-3">
+                          <button
+                            onClick={async (e) => {
+                              e.stopPropagation();
+                              const token = localStorage.getItem("token");
+                              const email = notif.message.match(/\(([^)]+)\)/)?.[1];
+                              if (!email) return;
+                              const res = await fetch("/api/admin/users?action=all", {
+                                headers: { Authorization: `Bearer ${token}` }
+                              });
+                              const data = await res.json();
+                              if (data.success) {
+                                const targetUser = data.data.find((u: any) => u.email === email);
+                                if (targetUser) {
+                                  const deleteRes = await fetch("/api/admin/delete-user", {
+                                    method: "PUT",
+                                    headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+                                    body: JSON.stringify({ userId: targetUser._id, action: "approve" })
+                                  });
+                                  const deleteData = await deleteRes.json();
+                                  if (deleteData.success) {
+                                    fetchNotifications();
+                                    fetchData();
+                                  }
+                                }
+                              }
+                            }}
+                            className="px-3 py-1.5 rounded-lg bg-green-500/20 text-green-400 hover:bg-green-500/30 text-xs font-medium"
+                          >
+                            <Check className="w-3 h-3 inline mr-1" /> Approve Delete
+                          </button>
+                          <button
+                            onClick={async (e) => {
+                              e.stopPropagation();
+                              const token = localStorage.getItem("token");
+                              const email = notif.message.match(/\(([^)]+)\)/)?.[1];
+                              if (!email) return;
+                              const res = await fetch("/api/admin/users?action=all", {
+                                headers: { Authorization: `Bearer ${token}` }
+                              });
+                              const data = await res.json();
+                              if (data.success) {
+                                const targetUser = data.data.find((u: any) => u.email === email);
+                                if (targetUser) {
+                                  await fetch("/api/admin/delete-user", {
+                                    method: "PUT",
+                                    headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+                                    body: JSON.stringify({ userId: targetUser._id, action: "reject" })
+                                  });
+                                  fetchNotifications();
+                                }
+                              }
+                            }}
+                            className="px-3 py-1.5 rounded-lg bg-red-500/20 text-red-400 hover:bg-red-500/30 text-xs font-medium"
+                          >
+                            <X className="w-3 h-3 inline mr-1" /> Reject
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="glass-card p-12 text-center">
+                  <Bell className="w-12 h-12 mx-auto text-white/20 mb-4" />
+                  <p className="text-white/40">No notifications yet</p>
+                </div>
               )}
             </div>
           )}

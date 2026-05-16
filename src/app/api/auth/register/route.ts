@@ -16,10 +16,16 @@ export async function POST(req: NextRequest) {
     // Check if user exists
     const existing = await User.findOne({ email });
     if (existing) {
-      return NextResponse.json(
-        { success: false, error: "Email already registered" },
-        { status: 400 }
-      );
+      // Allow re-registration if account was deleted
+      if (existing.isDeleted) {
+        await User.findByIdAndDelete(existing._id);
+        await Artist.findOneAndDelete({ userId: existing._id });
+      } else {
+        return NextResponse.json(
+          { success: false, error: "Email already registered" },
+          { status: 400 }
+        );
+      }
     }
 
     // Hash password

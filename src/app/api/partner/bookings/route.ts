@@ -3,6 +3,7 @@ import connectDB from "@/lib/mongodb";
 import Artist from "@/models/Artist";
 import Booking from "@/models/Booking";
 import Notification from "@/models/Notification";
+import User from "@/models/User";
 import jwt from "jsonwebtoken";
 
 const JWT_SECRET = process.env.JWT_SECRET || "vibestage_dev_secret";
@@ -214,25 +215,48 @@ export async function PUT(request: NextRequest) {
       });
     }
 
+    // Helper to notify all admins
+    const notifyAdmins = async (title: string, message: string) => {
+      const admins = await User.find({ role: "admin" });
+      for (const admin of admins) {
+        await Notification.create({ userId: admin._id, type: "payment", title, message, bookingId: booking._id });
+      }
+    };
+
     // Notify about admin payment
     if (action === "payAdmin") {
+      const isAdvance = paymentType === "advance";
+      const amount = isAdvance ? (booking.advanceAmount || Math.round(booking.finalPrice * 0.3)) : booking.finalPrice;
+      const remaining = isAdvance ? (booking.finalPrice - (booking.advanceAmount || Math.round(booking.finalPrice * 0.3))) : 0;
+
       await Notification.create({
         userId: booking.artistUserId,
         type: "payment",
-        title: paymentType === "advance" ? "Advance Payment Received by Admin" : "Full Payment Received by Admin",
-        message: `Payment of ₹${paymentType === "advance" ? (booking.advanceAmount || Math.round(booking.finalPrice * 0.3)) : booking.finalPrice} received by admin for "${booking.eventName}"`,
+        title: isAdvance ? "Advance Payment Received by Admin" : "Full Payment Received by Admin",
+        message: `Payment of ₹${amount} received by admin for "${booking.eventName}"`,
         bookingId: booking._id
       });
+
+      await notifyAdmins(
+        isAdvance ? "Advance Payment Received" : "Full Payment Received",
+        `₹${amount} received from ${booking.organizerName} for "${booking.eventName}"${isAdvance ? `. Artist ${booking.artistName} needs remaining ₹${remaining}` : `. Release ₹${booking.artistPayout} to ${booking.artistName}`}`
+      );
     }
 
     if (action === "payArtistRemaining") {
+      const remaining = booking.finalPrice - (booking.advanceAmount || Math.round(booking.finalPrice * 0.3));
       await Notification.create({
         userId: booking.artistUserId,
         type: "payment",
         title: "Remaining Payment Received",
-        message: `Remaining payment of ₹${(booking.finalPrice - (booking.advanceAmount || Math.round(booking.finalPrice * 0.3))).toLocaleString()} received for "${booking.eventName}"`,
+        message: `Remaining payment of ₹${remaining.toLocaleString()} received for "${booking.eventName}"`,
         bookingId: booking._id
       });
+
+      await notifyAdmins(
+        "Remaining Payment Received by Artist",
+        `${booking.organizerName} has paid remaining ₹${remaining} to ${booking.artistName} for "${booking.eventName}"`
+      );
     }
 
     if (action === "adminPaysArtist") {
@@ -243,6 +267,11 @@ export async function PUT(request: NextRequest) {
         message: `Payment of ₹${booking.artistPayout.toLocaleString()} has been sent to your account for "${booking.eventName}"`,
         bookingId: booking._id
       });
+
+      await notifyAdmins(
+        "Payment Released to Artist",
+        `₹${booking.artistPayout} released to ${booking.artistName} for "${booking.eventName}"`
+      );
     }
 
     return NextResponse.json({ success: true, data: booking });

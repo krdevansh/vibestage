@@ -430,9 +430,26 @@ export default function PartnerDashboard() {
           ))}
         </nav>
 
-        <button onClick={handleLogout} className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-white/60 hover:text-red-400 hover:bg-red-400/10 transition-all mt-8">
+        <button onClick={handleLogout} className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-white/60 hover:text-red-400 hover:bg-red-400/10 transition-all mt-4">
           <LogOut className="w-5 h-5" />
           <span className="font-medium">Logout</span>
+        </button>
+        <button
+          onClick={async () => {
+            if (!confirm("Are you sure you want to request account deletion? This cannot be undone.")) return;
+            const token = localStorage.getItem("token");
+            const res = await fetch("/api/user/delete-request", {
+              method: "POST",
+              headers: { Authorization: `Bearer ${token}` }
+            });
+            const data = await res.json();
+            if (data.success) alert("Deletion request sent to admin.");
+            else alert(data.error || "Failed to send request");
+          }}
+          className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-red-400/60 hover:text-red-400 hover:bg-red-400/10 transition-all mt-2"
+        >
+          <X className="w-5 h-5" />
+          <span className="font-medium">Request Account Deletion</span>
         </button>
       </aside>
 

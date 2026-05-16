@@ -22,7 +22,7 @@ export async function POST(req: NextRequest) {
 
     if (user.isDeleted) {
       return NextResponse.json(
-        { success: false, error: "Your account has been deleted by admin. Please contact the support team." },
+        { success: false, error: "Account deleted. You can register again with the same email." },
         { status: 403 }
       );
     }

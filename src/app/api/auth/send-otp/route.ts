@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import connectDB from "@/lib/mongodb";
 import User from "@/models/User";
+import Artist from "@/models/Artist";
 import { sendEmail } from "@/lib/email";
 
 function generateOTP(): string {
@@ -22,10 +23,15 @@ export async function POST(req: NextRequest) {
     if (type === "signup") {
       const existing = await User.findOne({ email });
       if (existing) {
-        return NextResponse.json(
-          { success: false, error: "Email already registered" },
-          { status: 400 }
-        );
+        if (existing.isDeleted) {
+          await User.findByIdAndDelete(existing._id);
+          await Artist.findOneAndDelete({ userId: existing._id });
+        } else {
+          return NextResponse.json(
+            { success: false, error: "Email already registered" },
+            { status: 400 }
+          );
+        }
       }
     } else if (type === "forgot") {
       const existing = await User.findOne({ email });
