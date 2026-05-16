@@ -1,22 +1,24 @@
-let nodemailer: any = null;
-try {
-  nodemailer = require("nodemailer");
-} catch (e) {
-  console.log("nodemailer not installed - OTP will be logged to console");
-}
+import nodemailer from "nodemailer";
 
-let transporter: any = null;
-if (nodemailer && process.env.SMTP_HOST) {
-  transporter = nodemailer.createTransport({
-    host: process.env.SMTP_HOST,
-    port: parseInt(process.env.SMTP_PORT || "587"),
-    secure: process.env.SMTP_SECURE === "true",
-    auth: {
-      user: process.env.SMTP_USER,
-      pass: process.env.SMTP_PASS,
-    },
-  });
-}
+const transporter = process.env.SMTP_HOST ? nodemailer.createTransport({
+  host: process.env.SMTP_HOST,
+  port: parseInt(process.env.SMTP_PORT || "587"),
+  secure: false,
+  auth: {
+    user: process.env.SMTP_USER,
+    pass: process.env.SMTP_PASS,
+  },
+  tls: {
+    rejectUnauthorized: false,
+  },
+}) : null;
+
+console.log("Email config:", {
+  hasSMTP: !!process.env.SMTP_HOST,
+  smtpHost: process.env.SMTP_HOST,
+  smtpUser: process.env.SMTP_USER ? "set" : "not set",
+  smtpPass: process.env.SMTP_PASS ? "set" : "not set",
+});
 
 export async function sendEmail(to: string, subject: string, html: string) {
   if (!transporter) {
@@ -26,15 +28,16 @@ export async function sendEmail(to: string, subject: string, html: string) {
   }
 
   try {
-    await transporter.sendMail({
+    const info = await transporter.sendMail({
       from: process.env.SMTP_FROM || "VibeStage <noreply@vibestage.com>",
       to,
       subject,
       html,
     });
+    console.log("Email sent:", info.messageId);
     return true;
-  } catch (error) {
-    console.error("Email sending error:", error);
+  } catch (error: any) {
+    console.error("Email sending error:", error.message || error);
     return false;
   }
 }
