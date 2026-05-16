@@ -23,10 +23,20 @@ interface Booking {
   eventType: string;
   date: string;
   venue: string;
+  proposedDates: string[];
+  proposedVenues: string[];
+  acceptedDate: string;
+  acceptedVenue: string;
   finalPrice: number;
+  basePrice: number;
   status: string;
   paymentStatus: string;
+  paymentType: string;
+  organizerPaidAdmin: boolean;
+  adminPaidArtist: boolean;
+  advanceAmount: number;
   artistName: string;
+  artistId: { _id: string; name: string; genre: string[]; image: string; location: string };
   artistImage: string;
 }
 
@@ -54,7 +64,7 @@ export default function PartnerDashboard() {
   
   // Form states
   const [bookingForm, setBookingForm] = useState({
-    artistId: "", eventName: "", eventType: "Private Event", date: "", venue: "", notes: ""
+    artistId: "", eventName: "", eventType: "Private Event", dates: ["", "", "", "", ""], venues: ["", "", "", "", ""], notes: ""
   });
   const [searchQuery, setSearchQuery] = useState("");
   const [bookingLoading, setBookingLoading] = useState(false);
@@ -148,6 +158,14 @@ export default function PartnerDashboard() {
     const token = localStorage.getItem("token");
     if (!token || !bookingForm.artistId) return;
 
+    const filteredDates = bookingForm.dates.filter(d => d.trim() !== "");
+    const filteredVenues = bookingForm.venues.filter(v => v.trim() !== "");
+
+    if (filteredDates.length === 0 || filteredVenues.length === 0) {
+      setBookingError("Please provide at least one date and one venue");
+      return;
+    }
+
     setBookingLoading(true);
     setBookingSuccess("");
     setBookingError("");
@@ -159,12 +177,19 @@ export default function PartnerDashboard() {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`
         },
-        body: JSON.stringify(bookingForm)
+        body: JSON.stringify({
+          artistId: bookingForm.artistId,
+          eventName: bookingForm.eventName,
+          eventType: bookingForm.eventType,
+          proposedDates: filteredDates,
+          proposedVenues: filteredVenues,
+          notes: bookingForm.notes
+        })
       });
       const data = await res.json();
       if (data.success) {
         setBookingSuccess("Booking request sent successfully!");
-        setBookingForm({ artistId: "", eventName: "", eventType: "Private Event", date: "", venue: "", notes: "" });
+        setBookingForm({ artistId: "", eventName: "", eventType: "Private Event", dates: ["", "", "", "", ""], venues: ["", "", "", "", ""], notes: "" });
         setSelectedArtist(null);
         fetchData();
         setTimeout(() => setBookingSuccess(""), 3000);
@@ -545,29 +570,15 @@ export default function PartnerDashboard() {
                       <label className="block text-sm text-white/40 mb-1">Event Name</label>
                       <input type="text" value={bookingForm.eventName} onChange={(e) => setBookingForm({ ...bookingForm, eventName: e.target.value })} className="w-full px-4 py-3 rounded-xl bg-white/[0.04] border border-white/[0.08] text-white" placeholder="My Wedding" />
                     </div>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <label className="block text-sm text-white/40 mb-1">Event Type</label>
-                        <select value={bookingForm.eventType} onChange={(e) => setBookingForm({ ...bookingForm, eventType: e.target.value })} className="w-full px-4 py-3 rounded-xl bg-white/[0.04] border border-white/[0.08] text-white">
-                          <option value="Private Event">Private Event</option>
-                          <option value="Wedding">Wedding</option>
-                          <option value="Corporate">Corporate</option>
-                          <option value="Birthday">Birthday</option>
-                          <option value="Festival">Festival</option>
-                        </select>
-                      </div>
-                      <div>
-                        <label className="block text-sm text-white/40 mb-1">Date</label>
-                        <input type="date" value={bookingForm.date} onChange={(e) => setBookingForm({ ...bookingForm, date: e.target.value })} className="w-full px-4 py-3 rounded-xl bg-white/[0.04] border border-white/[0.08] text-white" />
-                      </div>
-                    </div>
                     <div>
-                      <label className="block text-sm text-white/40 mb-1">Venue</label>
-                      <input type="text" value={bookingForm.venue} onChange={(e) => setBookingForm({ ...bookingForm, venue: e.target.value })} className="w-full px-4 py-3 rounded-xl bg-white/[0.04] border border-white/[0.08] text-white" placeholder="Hotel Taj, Mumbai" />
-                    </div>
-                    <div>
-                      <label className="block text-sm text-white/40 mb-1">Notes</label>
-                      <textarea value={bookingForm.notes} onChange={(e) => setBookingForm({ ...bookingForm, notes: e.target.value })} rows={2} className="w-full px-4 py-3 rounded-xl bg-white/[0.04] border border-white/[0.08] text-white resize-none" placeholder="Any special requirements..." />
+                      <label className="block text-sm text-white/40 mb-1">Event Type</label>
+                      <select value={bookingForm.eventType} onChange={(e) => setBookingForm({ ...bookingForm, eventType: e.target.value })} className="w-full px-4 py-3 rounded-xl bg-white/[0.04] border border-white/[0.08] text-white">
+                        <option value="Private Event">Private Event</option>
+                        <option value="Wedding">Wedding</option>
+                        <option value="Corporate">Corporate</option>
+                        <option value="Birthday">Birthday</option>
+                        <option value="Festival">Festival</option>
+                      </select>
                     </div>
                     <div className="flex items-center justify-between p-3 rounded-lg bg-brand-orange/10">
                       <span className="text-white/40">Final Price:</span>
@@ -594,6 +605,9 @@ export default function PartnerDashboard() {
             {bookingSuccess && (
               <div className="mb-6 p-4 rounded-xl bg-green-500/10 text-green-400">{bookingSuccess}</div>
             )}
+            {bookingError && (
+              <div className="mb-6 p-4 rounded-xl bg-red-500/10 text-red-400">{bookingError}</div>
+            )}
 
             {!bookingForm.artistId ? (
               <div className="glass-card p-6 text-center">
@@ -617,26 +631,79 @@ export default function PartnerDashboard() {
                     <label className="block text-sm text-white/40 mb-1.5">Event Name *</label>
                     <input type="text" required value={bookingForm.eventName} onChange={(e) => setBookingForm({ ...bookingForm, eventName: e.target.value })} className="w-full px-4 py-3 rounded-xl bg-white/[0.04] border border-white/[0.08] text-white" />
                   </div>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-sm text-white/40 mb-1.5">Event Type</label>
-                      <select value={bookingForm.eventType} onChange={(e) => setBookingForm({ ...bookingForm, eventType: e.target.value })} className="w-full px-4 py-3 rounded-xl bg-white/[0.04] border border-white/[0.08] text-white">
-                        <option value="Private Event">Private Event</option>
-                        <option value="Wedding">Wedding</option>
-                        <option value="Corporate">Corporate</option>
-                        <option value="Birthday">Birthday</option>
-                        <option value="Festival">Festival</option>
-                      </select>
-                    </div>
-                    <div>
-                      <label className="block text-sm text-white/40 mb-1.5">Date *</label>
-                      <input type="date" required value={bookingForm.date} onChange={(e) => setBookingForm({ ...bookingForm, date: e.target.value })} className="w-full px-4 py-3 rounded-xl bg-white/[0.04] border border-white/[0.08] text-white" />
-                    </div>
-                  </div>
                   <div>
-                    <label className="block text-sm text-white/40 mb-1.5">Venue *</label>
-                    <input type="text" required value={bookingForm.venue} onChange={(e) => setBookingForm({ ...bookingForm, venue: e.target.value })} className="w-full px-4 py-3 rounded-xl bg-white/[0.04] border border-white/[0.08] text-white" />
+                    <label className="block text-sm text-white/40 mb-1.5">Event Type</label>
+                    <select value={bookingForm.eventType} onChange={(e) => setBookingForm({ ...bookingForm, eventType: e.target.value })} className="w-full px-4 py-3 rounded-xl bg-white/[0.04] border border-white/[0.08] text-white">
+                      <option value="Private Event">Private Event</option>
+                      <option value="Wedding">Wedding</option>
+                      <option value="Corporate">Corporate</option>
+                      <option value="Birthday">Birthday</option>
+                      <option value="Festival">Festival</option>
+                    </select>
                   </div>
+
+                  {/* Proposed Dates (up to 5) */}
+                  <div>
+                    <label className="block text-sm text-white/40 mb-1.5">Proposed Dates * (up to 5, future dates only)</label>
+                    <div className="space-y-2">
+                      {bookingForm.dates.map((d, i) => (
+                        <div key={i} className="flex items-center gap-2">
+                          <input
+                            type="date"
+                            value={d}
+                            min={new Date(Date.now() + 86400000).toISOString().split("T")[0]}
+                            onChange={(e) => {
+                              const newDates = [...bookingForm.dates];
+                              newDates[i] = e.target.value;
+                              setBookingForm({ ...bookingForm, dates: newDates });
+                            }}
+                            className="flex-1 px-4 py-3 rounded-xl bg-white/[0.04] border border-white/[0.08] text-white"
+                          />
+                          {i > 0 && d && (
+                            <button onClick={() => {
+                              const newDates = [...bookingForm.dates];
+                              newDates[i] = "";
+                              setBookingForm({ ...bookingForm, dates: newDates });
+                            }} className="text-red-400 hover:text-red-300">
+                              <X className="w-4 h-4" />
+                            </button>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Proposed Venues (up to 5) */}
+                  <div>
+                    <label className="block text-sm text-white/40 mb-1.5">Proposed Venues * (up to 5)</label>
+                    <div className="space-y-2">
+                      {bookingForm.venues.map((v, i) => (
+                        <div key={i} className="flex items-center gap-2">
+                          <input
+                            type="text"
+                            value={v}
+                            onChange={(e) => {
+                              const newVenues = [...bookingForm.venues];
+                              newVenues[i] = e.target.value;
+                              setBookingForm({ ...bookingForm, venues: newVenues });
+                            }}
+                            placeholder={i === 0 ? "Venue name" : `Venue option ${i + 1}`}
+                            className="flex-1 px-4 py-3 rounded-xl bg-white/[0.04] border border-white/[0.08] text-white"
+                          />
+                          {i > 0 && v && (
+                            <button onClick={() => {
+                              const newVenues = [...bookingForm.venues];
+                              newVenues[i] = "";
+                              setBookingForm({ ...bookingForm, venues: newVenues });
+                            }} className="text-red-400 hover:text-red-300">
+                              <X className="w-4 h-4" />
+                            </button>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
                   <div>
                     <label className="block text-sm text-white/40 mb-1.5">Notes</label>
                     <textarea value={bookingForm.notes} onChange={(e) => setBookingForm({ ...bookingForm, notes: e.target.value })} rows={3} className="w-full px-4 py-3 rounded-xl bg-white/[0.04] border border-white/[0.08] text-white resize-none" />
@@ -680,65 +747,144 @@ export default function PartnerDashboard() {
             
             {bookings.length > 0 ? (
               <div className="space-y-3">
-                {bookings.map((booking) => (
-                  <div key={booking._id} className="glass-card p-4">
-                    <div className="flex items-center justify-between mb-3">
-                      <div className="flex items-center gap-4">
-                        <div className="w-12 h-12 rounded-lg bg-white/[0.04] flex items-center justify-center">
-                          <Calendar className="w-6 h-6 text-brand-orange" />
+                {bookings.map((booking) => {
+                  const artist = artists.find(a => a._id === (booking.artistId?._id || booking.artistId));
+                  return (
+                    <div key={booking._id} className="glass-card p-4">
+                      <div className="flex items-center justify-between mb-3">
+                        <div className="flex items-center gap-4">
+                          <div className="w-12 h-12 rounded-lg bg-white/[0.04] flex items-center justify-center">
+                            <Calendar className="w-6 h-6 text-brand-orange" />
+                          </div>
+                          <div>
+                            <p className="text-white font-medium">{booking.eventName}</p>
+                            <p className="text-sm text-white/40">
+                              {booking.artistName || artist?.name}
+                              {booking.status === "accepted" && booking.acceptedDate && ` • ${new Date(booking.acceptedDate).toLocaleDateString()}`}
+                            </p>
+                          </div>
                         </div>
-                        <div>
-                          <p className="text-white font-medium">{booking.eventName}</p>
-                          <p className="text-sm text-white/40">{booking.artistName} • {new Date(booking.date).toLocaleDateString()}</p>
+                        <div className="flex items-center gap-3">
+                          <span className={`text-xs px-2 py-1 rounded-full ${
+                            booking.status === "completed" ? "bg-green-500/20 text-green-400" :
+                            booking.status === "accepted" || booking.status === "paid" ? "bg-blue-500/20 text-blue-400" :
+                            booking.status === "cancelled" || booking.status === "rejected" ? "bg-red-500/20 text-red-400" :
+                            "bg-yellow-500/20 text-yellow-400"
+                          }`}>{booking.status}</span>
+                          <p className="text-brand-orange font-semibold">₹{booking.finalPrice.toLocaleString()}</p>
                         </div>
                       </div>
-                      <div className="flex items-center gap-3">
-                        <span className={`text-xs px-2 py-1 rounded-full ${
-                          booking.status === "completed" ? "bg-green-500/20 text-green-400" :
-                          booking.status === "accepted" || booking.status === "paid" ? "bg-blue-500/20 text-blue-400" :
-                          booking.status === "cancelled" || booking.status === "rejected" ? "bg-red-500/20 text-red-400" :
-                          "bg-yellow-500/20 text-yellow-400"
-                        }`}>{booking.status}</span>
-                        <p className="text-brand-orange font-semibold">₹{booking.finalPrice.toLocaleString()}</p>
+
+                      {/* Show proposed dates/venues for pending */}
+                      {booking.status === "pending" && (
+                        <div className="mb-3 text-sm">
+                          <p className="text-white/40">Proposed Dates: {(booking.proposedDates || []).map((d: string) => new Date(d).toLocaleDateString()).join(", ")}</p>
+                          <p className="text-white/40">Proposed Venues: {(booking.proposedVenues || []).join(", ")}</p>
+                        </div>
+                      )}
+
+                      {/* Show accepted date/venue */}
+                      {booking.status === "accepted" && booking.acceptedDate && (
+                        <div className="mb-3 text-sm">
+                          <p className="text-green-400">Artist available on: {new Date(booking.acceptedDate).toLocaleDateString()} at {booking.acceptedVenue}</p>
+                        </div>
+                      )}
+
+                      <div className="flex flex-wrap gap-2">
+                        {/* Pending - no actions for organizer yet */}
+                        
+                        {/* Accepted - show payment options */}
+                        {booking.status === "accepted" && !booking.organizerPaidAdmin && (
+                          <>
+                            <button
+                              onClick={async () => {
+                                const token = localStorage.getItem("token");
+                                const res = await fetch("/api/partner/bookings", {
+                                  method: "PUT",
+                                  headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+                                  body: JSON.stringify({ bookingId: booking._id, action: "payAdmin", paymentType: "full" })
+                                });
+                                const data = await res.json();
+                                if (data.success) { fetchData(); setPaymentSuccess("Full payment recorded!"); setTimeout(() => setPaymentSuccess(""), 3000); }
+                              }}
+                              className="px-4 py-2 rounded-lg bg-brand-gradient text-white text-sm font-medium"
+                            >
+                              Pay Full to Admin (₹{booking.finalPrice.toLocaleString()})
+                            </button>
+                            <button
+                              onClick={async () => {
+                                const token = localStorage.getItem("token");
+                                const advanceAmt = Math.round(booking.finalPrice * 0.3);
+                                const res = await fetch("/api/partner/bookings", {
+                                  method: "PUT",
+                                  headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+                                  body: JSON.stringify({ bookingId: booking._id, action: "payAdmin", paymentType: "advance", advanceAmount: advanceAmt })
+                                });
+                                const data = await res.json();
+                                if (data.success) { fetchData(); setPaymentSuccess("30% advance payment recorded!"); setTimeout(() => setPaymentSuccess(""), 3000); }
+                              }}
+                              className="px-4 py-2 rounded-lg bg-brand-orange/20 text-brand-orange text-sm"
+                            >
+                              Pay 30% Advance to Admin (₹{Math.round(booking.finalPrice * 0.3).toLocaleString()})
+                            </button>
+                          </>
+                        )}
+
+                        {/* Advance paid - organizer pays remaining to artist */}
+                        {booking.status === "accepted" && booking.organizerPaidAdmin && booking.paymentType === "advance" && !booking.adminPaidArtist && (
+                          <>
+                            <button
+                              onClick={async () => {
+                                const token = localStorage.getItem("token");
+                                const res = await fetch("/api/partner/bookings", {
+                                  method: "PUT",
+                                  headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+                                  body: JSON.stringify({ bookingId: booking._id, action: "payArtistRemaining" })
+                                });
+                                const data = await res.json();
+                                if (data.success) { fetchData(); setPaymentSuccess("Remaining payment recorded!"); setTimeout(() => setPaymentSuccess(""), 3000); }
+                              }}
+                              className="px-4 py-2 rounded-lg bg-brand-gradient text-white text-sm font-medium"
+                            >
+                              Pay Remaining to Artist (₹{(booking.finalPrice - (booking.advanceAmount || Math.round(booking.finalPrice * 0.3))).toLocaleString()})
+                            </button>
+                          </>
+                        )}
+
+                        {/* Full paid to admin - admin will pay artist */}
+                        {booking.status === "accepted" && booking.organizerPaidAdmin && booking.paymentType === "full" && (
+                          <span className="px-4 py-2 rounded-lg bg-green-500/20 text-green-400 text-sm">Paid to Admin - Awaiting Admin to Release to Artist</span>
+                        )}
+
+                        {booking.status === "accepted" && (
+                          <button
+                            onClick={() => updateBooking(booking._id, "cancel")}
+                            className="px-4 py-2 rounded-lg bg-red-500/20 text-red-400 text-sm"
+                          >
+                            Cancel
+                          </button>
+                        )}
+
+                        {booking.status === "paid" && (
+                          <button
+                            onClick={() => updateBooking(booking._id, "complete")}
+                            className="px-4 py-2 rounded-lg bg-green-500/20 text-green-400 text-sm"
+                          >
+                            Mark Completed
+                          </button>
+                        )}
+                        {booking.status === "completed" && (
+                          <button
+                            onClick={() => setShowReviewModal(booking._id)}
+                            className="px-4 py-2 rounded-lg bg-brand-gradient text-white text-sm font-medium"
+                          >
+                            Leave Review
+                          </button>
+                        )}
                       </div>
                     </div>
-                    <div className="flex flex-wrap gap-2">
-                      {booking.status === "accepted" && booking.paymentStatus !== "paid" && (
-                        <button
-                          onClick={() => initiatePayment(booking)}
-                          disabled={payingBooking === booking._id}
-                          className="px-4 py-2 rounded-lg bg-brand-gradient text-white text-sm font-medium"
-                        >
-                          {payingBooking === booking._id ? "Processing..." : "Pay Now"}
-                        </button>
-                      )}
-                      {booking.status === "accepted" && (
-                        <button
-                          onClick={() => updateBooking(booking._id, "cancel")}
-                          className="px-4 py-2 rounded-lg bg-red-500/20 text-red-400 text-sm"
-                        >
-                          Cancel
-                        </button>
-                      )}
-                      {booking.status === "paid" && (
-                        <button
-                          onClick={() => updateBooking(booking._id, "complete")}
-                          className="px-4 py-2 rounded-lg bg-green-500/20 text-green-400 text-sm"
-                        >
-                          Mark Completed
-                        </button>
-                      )}
-                      {booking.status === "completed" && (
-                        <button
-                          onClick={() => setShowReviewModal(booking._id)}
-                          className="px-4 py-2 rounded-lg bg-brand-gradient text-white text-sm font-medium"
-                        >
-                          Leave Review
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             ) : (
               <div className="glass-card p-12 text-center">

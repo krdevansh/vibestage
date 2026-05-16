@@ -39,6 +39,8 @@ interface Artist {
   languages: string[];
   performanceLanguages: string[];
   socialLinks: { instagram?: string; youtube?: string; website?: string };
+  upiId: string;
+  upiQrCode: string;
   isAvailable: boolean;
   isVerified: boolean;
 }
@@ -49,10 +51,17 @@ interface Booking {
   eventType: string;
   date: string;
   venue: string;
+  proposedDates: string[];
+  proposedVenues: string[];
+  acceptedDate: string;
+  acceptedVenue: string;
   finalPrice: number;
   artistPayout: number;
   status: string;
   paymentStatus: string;
+  paymentType: string;
+  organizerPaidAdmin: boolean;
+  adminPaidArtist: boolean;
   organizerName: string;
   organizerEmail: string;
 }
@@ -89,7 +98,7 @@ export default function ArtistDashboard() {
   const [profileForm, setProfileForm] = useState({
     name: "", stageName: "", realName: "", phone: "", location: "", city: "", genre: "", genres: "", bio: "",
     languages: "", performanceLanguages: "", instagram: "", youtube: "", website: "", price: 0, image: "",
-    coverImage: "", videoUrl: ""
+    coverImage: "", videoUrl: "", upiId: "", upiQrCode: ""
   });
   const [gallery, setGallery] = useState<string[]>([]);
   const [uploading, setUploading] = useState<string | null>(null);
@@ -128,7 +137,9 @@ export default function ArtistDashboard() {
           price: profileData.data.price || 0,
           image: profileData.data.image || "",
           coverImage: profileData.data.coverImage || "",
-          videoUrl: profileData.data.videoUrl || ""
+          videoUrl: profileData.data.videoUrl || "",
+          upiId: profileData.data.upiId || "",
+          upiQrCode: profileData.data.upiQrCode || ""
         });
       }
 
@@ -251,6 +262,8 @@ export default function ArtistDashboard() {
             youtube: profileForm.youtube,
             website: profileForm.website
           },
+          upiId: profileForm.upiId,
+          upiQrCode: profileForm.upiQrCode,
           gallery
         })
       });
@@ -307,6 +320,8 @@ export default function ArtistDashboard() {
       console.error("Error marking notification read:", error);
     }
   };
+
+  const [selectedAcceptData, setSelectedAcceptData] = useState<{ [bookingId: string]: { date: string; venue: string } }>({});
 
   const pendingBookings = bookings.filter(b => b.status === "pending");
   const completedBookings = bookings.filter(b => b.status === "completed" || b.status === "paid");
@@ -419,7 +434,12 @@ export default function ArtistDashboard() {
                     <div key={booking._id} className="flex items-center justify-between p-4 rounded-xl bg-white/[0.04]">
                       <div>
                         <p className="text-white font-medium">{booking.eventName}</p>
-                        <p className="text-sm text-white/40">{new Date(booking.date).toLocaleDateString()} • {booking.venue}</p>
+                        <p className="text-sm text-white/40">
+                          {(booking.proposedDates || []).length > 0
+                            ? `${(booking.proposedDates || []).length} proposed dates`
+                            : new Date(booking.date).toLocaleDateString()
+                          } {(booking.proposedVenues || []).length > 0 ? `• ${(booking.proposedVenues || []).length} venues` : booking.venue}
+                        </p>
                       </div>
                       <div className="text-right">
                         <p className="text-brand-orange font-semibold">₹{booking.finalPrice.toLocaleString()}</p>
@@ -616,6 +636,30 @@ export default function ArtistDashboard() {
                 </p>
               </div>
 
+              {/* UPI Payment Details */}
+              <div className="glass-card p-6">
+                <h3 className="text-lg font-semibold text-white mb-4">UPI Payment Details</h3>
+                <p className="text-sm text-white/40 mb-4">Your UPI details are only visible to the admin for payment processing.</p>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm text-white/40 mb-1.5">UPI ID</label>
+                    <input type="text" value={profileForm.upiId} onChange={(e) => setProfileForm({ ...profileForm, upiId: e.target.value })} placeholder="yourname@upi" className="w-full px-4 py-3 rounded-xl bg-white/[0.04] border border-white/[0.08] text-white" />
+                  </div>
+                  <div>
+                    <label className="block text-sm text-white/40 mb-1.5">UPI QR Code URL</label>
+                    <input type="text" value={profileForm.upiQrCode} onChange={(e) => setProfileForm({ ...profileForm, upiQrCode: e.target.value })} placeholder="https://..." className="w-full px-4 py-3 rounded-xl bg-white/[0.04] border border-white/[0.08] text-white" />
+                  </div>
+                </div>
+                {profileForm.upiQrCode && (
+                  <div className="mt-4">
+                    <p className="text-sm text-white/40 mb-2">QR Code Preview:</p>
+                    <div className="w-32 h-32 rounded-xl overflow-hidden border border-white/[0.08]">
+                      <Image src={profileForm.upiQrCode} alt="UPI QR Code" width={128} height={128} className="w-full h-full object-cover" />
+                    </div>
+                  </div>
+                )}
+              </div>
+
               <button onClick={saveProfile} disabled={saving} className="btn-primary w-full">
                 <span>{saving ? "Saving..." : "Save Changes"}</span>
               </button>
@@ -660,31 +704,85 @@ export default function ArtistDashboard() {
             <h2 className="text-2xl font-display font-bold text-white mb-6">Booking Requests</h2>
             {pendingBookings.length > 0 ? (
               <div className="space-y-4">
-                {pendingBookings.map((booking) => (
-                  <div key={booking._id} className="glass-card p-6">
-                    <div className="flex items-start justify-between mb-4">
-                      <div>
-                        <h3 className="text-lg font-semibold text-white">{booking.eventName}</h3>
-                        <p className="text-sm text-white/40">{booking.eventType}</p>
+                {pendingBookings.map((booking) => {
+                  const selData = selectedAcceptData[booking._id] || { date: "", venue: "" };
+                  const setSelData = (date: string, venue: string) => {
+                    setSelectedAcceptData(prev => ({ ...prev, [booking._id]: { date, venue } }));
+                  };
+                  return (
+                    <div key={booking._id} className="glass-card p-6">
+                      <div className="flex items-start justify-between mb-4">
+                        <div>
+                          <h3 className="text-lg font-semibold text-white">{booking.eventName}</h3>
+                          <p className="text-sm text-white/40">{booking.eventType}</p>
+                        </div>
+                        <span className="px-3 py-1 rounded-full text-xs font-medium bg-yellow-500/20 text-yellow-400">Pending</span>
                       </div>
-                      <span className="px-3 py-1 rounded-full text-xs font-medium bg-yellow-500/20 text-yellow-400">Pending</span>
+                      <div className="grid grid-cols-2 gap-4 mb-4 text-sm">
+                        <div><span className="text-white/40">Your Payout:</span> <span className="text-green-400 font-semibold">₹{booking.artistPayout.toLocaleString()}</span></div>
+                        <div><span className="text-white/40">Client:</span> <span className="text-white">{booking.organizerName}</span></div>
+                      </div>
+                      
+                      {/* Proposed Dates */}
+                      <div className="mb-4">
+                        <p className="text-sm text-white/40 mb-2">Proposed Dates (select one):</p>
+                        <div className="flex flex-wrap gap-2">
+                          {(booking.proposedDates || []).map((d, i) => (
+                            <button
+                              key={i}
+                              onClick={() => setSelData(d, selData.venue)}
+                              className={`px-3 py-1.5 rounded-lg text-sm border transition-all ${selData.date === d ? "bg-brand-orange/20 border-brand-orange text-white" : "bg-white/[0.04] border-white/[0.08] text-white/60 hover:text-white"}`}
+                            >
+                              {new Date(d).toLocaleDateString()}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Proposed Venues */}
+                      <div className="mb-4">
+                        <p className="text-sm text-white/40 mb-2">Proposed Venues (select one):</p>
+                        <div className="flex flex-wrap gap-2">
+                          {(booking.proposedVenues || []).map((v, i) => (
+                            <button
+                              key={i}
+                              onClick={() => setSelData(selData.date, v)}
+                              className={`px-3 py-1.5 rounded-lg text-sm border transition-all ${selData.venue === v ? "bg-brand-orange/20 border-brand-orange text-white" : "bg-white/[0.04] border-white/[0.08] text-white/60 hover:text-white"}`}
+                            >
+                              {v}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
+                      <div className="flex gap-3">
+                        <button
+                          onClick={async () => {
+                            if (!selData.date || !selData.venue) return;
+                            const token = localStorage.getItem("token");
+                            const res = await fetch("/api/artist/bookings", {
+                              method: "PUT",
+                              headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+                              body: JSON.stringify({ bookingId: booking._id, action: "accept", acceptedDate: selData.date, acceptedVenue: selData.venue })
+                            });
+                            const data = await res.json();
+                            if (data.success) fetchArtistData();
+                          }}
+                          disabled={!selData.date || !selData.venue}
+                          className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl bg-green-500/20 text-green-400 hover:bg-green-500/30 transition-all disabled:opacity-40"
+                        >
+                          <Check className="w-4 h-4" /> Accept
+                        </button>
+                        <button onClick={() => handleBookingAction(booking._id, "reject")} className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl bg-red-500/20 text-red-400 hover:bg-red-500/30 transition-all">
+                          <X className="w-4 h-4" /> Reject
+                        </button>
+                      </div>
+                      {(!selData.date || !selData.venue) && (
+                        <p className="text-xs text-white/30 mt-2 text-center">Select a date and venue to enable Accept</p>
+                      )}
                     </div>
-                    <div className="grid grid-cols-2 gap-4 mb-4 text-sm">
-                      <div><span className="text-white/40">Date:</span> <span className="text-white">{new Date(booking.date).toLocaleDateString()}</span></div>
-                      <div><span className="text-white/40">Venue:</span> <span className="text-white">{booking.venue}</span></div>
-                      <div><span className="text-white/40">Your Payout:</span> <span className="text-green-400 font-semibold">₹{booking.artistPayout.toLocaleString()}</span></div>
-                      <div><span className="text-white/40">Client:</span> <span className="text-white">{booking.organizerName}</span></div>
-                    </div>
-                    <div className="flex gap-3">
-                      <button onClick={() => handleBookingAction(booking._id, "accept")} className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl bg-green-500/20 text-green-400 hover:bg-green-500/30 transition-all">
-                        <Check className="w-4 h-4" /> Accept
-                      </button>
-                      <button onClick={() => handleBookingAction(booking._id, "reject")} className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl bg-red-500/20 text-red-400 hover:bg-red-500/30 transition-all">
-                        <X className="w-4 h-4" /> Reject
-                      </button>
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             ) : (
               <div className="glass-card p-12 text-center">
@@ -701,11 +799,19 @@ export default function ArtistDashboard() {
             {bookings.length > 0 ? (
               <div className="space-y-3">
                 {bookings.map((booking) => (
-                  <div key={booking._id} className="glass-card p-4 flex items-center justify-between">
-                    <div>
-                      <p className="text-white font-medium">{booking.eventName}</p>
-                      <p className="text-sm text-white/40">{booking.organizerName} • {new Date(booking.date).toLocaleDateString()}</p>
-                    </div>
+                    <div key={booking._id} className="glass-card p-4 flex items-center justify-between">
+                      <div>
+                        <p className="text-white font-medium">{booking.eventName}</p>
+                        <p className="text-sm text-white/40">
+                          {booking.organizerName}
+                          {booking.acceptedDate
+                            ? ` • ${new Date(booking.acceptedDate).toLocaleDateString()}`
+                            : booking.date
+                              ? ` • ${new Date(booking.date).toLocaleDateString()}`
+                              : ""
+                          }
+                        </p>
+                      </div>
                     <div className="text-right">
                       <p className="text-brand-orange font-semibold">₹{booking.finalPrice.toLocaleString()}</p>
                       <span className={`text-xs px-2 py-0.5 rounded-full ${

@@ -36,8 +36,8 @@ export async function GET(request: NextRequest) {
         artists.map(async (artist) => {
           const paidBookings = await Booking.find({
             artistId: artist._id,
-            status: { $in: ["paid", "completed"] },
-            paymentStatus: "paid",
+            organizerPaidAdmin: true,
+            adminPaidArtist: { $ne: true },
           });
           const pendingAmount = paidBookings
             .filter(b => b.status !== "cancelled")
@@ -54,11 +54,16 @@ export async function GET(request: NextRequest) {
     }
 
     if (action === "summary") {
-      const allBookings = await Booking.find({ paymentStatus: "paid" });
+      const allBookings = await Booking.find({ paymentStatus: { $in: ["paid", "partial"] } });
       const totalRevenue = allBookings.reduce((sum, b) => sum + (b.finalPrice || 0), 0);
       const totalCommission = allBookings.reduce((sum, b) => sum + (b.adminCommission || 0), 0);
-      const pendingPayouts = allBookings
-        .filter(b => b.status !== "completed" && b.status !== "cancelled")
+      
+      // Pending: organizer paid admin but admin hasn't paid artist yet
+      const pendingPayoutsBookings = allBookings.filter(b => b.organizerPaidAdmin && !b.adminPaidArtist && b.status !== "cancelled");
+      const pendingPayouts = pendingPayoutsBookings.reduce((sum, b) => sum + (b.artistPayout || 0), 0);
+      
+      const completedPayouts = allBookings
+        .filter(b => b.adminPaidArtist)
         .reduce((sum, b) => sum + (b.artistPayout || 0), 0);
 
       return NextResponse.json({
@@ -67,7 +72,7 @@ export async function GET(request: NextRequest) {
           totalRevenue,
           totalCommission,
           pendingPayouts,
-          completedPayouts: totalRevenue - totalCommission - pendingPayouts,
+          completedPayouts,
         },
       });
     }
@@ -90,6 +95,19 @@ export async function PUT(request: NextRequest) {
     const body = await request.json();
     const { artistId, amount } = body;
 
+    const bookings = await Booking.find({
+      artistId,
+      organizerPaidAdmin: true,
+      adminPaidArtist: { $ne: true },
+    });
+
+    for (const booking of bookings) {
+      booking.adminPaidArtist = true;
+      booking.paymentStatus = "paid";
+      booking.status = "paid";
+      await booking.save();
+    }
+
     const artist = await Artist.findById(artistId);
     if (!artist) {
       return NextResponse.json({ success: false, error: "Artist not found" }, { status: 404 });
@@ -97,7 +115,7 @@ export async function PUT(request: NextRequest) {
 
     artist.payoutStatus = "paid";
     artist.payoutAmount = (artist.payoutAmount || 0) + (amount || 0);
-    artist.completedBookings = (artist.completedBookings || 0) + 1;
+    artist.completedBookings = (artist.completedBookings || 0) + bookings.length;
     await artist.save();
 
     return NextResponse.json({ success: true, message: "Payout marked as paid" });

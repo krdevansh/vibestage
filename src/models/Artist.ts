@@ -28,6 +28,8 @@ export interface IArtist extends Document {
     youtube?: string;
     website?: string;
   };
+  upiId: string;
+  upiQrCode: string;
   availableDates: Date[];
   isAvailable: boolean;
   isVerified: boolean;
@@ -66,6 +68,8 @@ const ArtistSchema = new Schema<IArtist>(
       youtube: { type: String, default: "" },
       website: { type: String, default: "" },
     },
+    upiId: { type: String, default: "" },
+    upiQrCode: { type: String, default: "" },
     availableDates: [{ type: Date }],
     isAvailable: { type: Boolean, default: true },
     isVerified: { type: Boolean, default: false },

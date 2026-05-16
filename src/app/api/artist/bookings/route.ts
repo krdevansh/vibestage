@@ -88,7 +88,7 @@ export async function PUT(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { bookingId, action } = body;
+    const { bookingId, action, acceptedDate, acceptedVenue } = body;
 
     if (!bookingId || !action) {
       return NextResponse.json({ success: false, error: "Missing required fields" }, { status: 400 });
@@ -99,9 +99,20 @@ export async function PUT(request: NextRequest) {
       return NextResponse.json({ success: false, error: "Invalid action" }, { status: 400 });
     }
 
+    const updateData: any = { status: newStatus };
+    if (newStatus === "accepted") {
+      if (!acceptedDate || !acceptedVenue) {
+        return NextResponse.json({ success: false, error: "Must select a date and venue to accept" }, { status: 400 });
+      }
+      updateData.acceptedDate = new Date(acceptedDate);
+      updateData.acceptedVenue = acceptedVenue;
+      updateData.date = new Date(acceptedDate);
+      updateData.venue = acceptedVenue;
+    }
+
     const booking = await Booking.findOneAndUpdate(
       { _id: bookingId, artistId: artist._id },
-      { $set: { status: newStatus } },
+      { $set: updateData },
       { new: true }
     );
 
@@ -114,7 +125,9 @@ export async function PUT(request: NextRequest) {
       userId: booking.organizerId,
       type: newStatus === "accepted" ? "booking_accepted" : "booking_rejected",
       title: newStatus === "accepted" ? "Booking Accepted" : "Booking Rejected",
-      message: `Your booking "${booking.eventName}" has been ${newStatus} by ${artist.name}`,
+      message: newStatus === "accepted"
+        ? `Your booking "${booking.eventName}" has been accepted by ${artist.name} for ${acceptedDate} at ${acceptedVenue}`
+        : `Your booking "${booking.eventName}" has been rejected by ${artist.name}`,
       bookingId: booking._id
     });
 

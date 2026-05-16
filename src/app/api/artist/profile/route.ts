@@ -68,6 +68,8 @@ export async function PUT(request: NextRequest) {
     if (body.price !== undefined) updateFields.price = body.price;
     if (body.image) updateFields.image = body.image;
     if (body.coverImage !== undefined) updateFields.coverImage = body.coverImage;
+    if (body.upiId !== undefined) updateFields.upiId = body.upiId;
+    if (body.upiQrCode !== undefined) updateFields.upiQrCode = body.upiQrCode;
 
     const artist = await Artist.findOneAndUpdate(
       { userId: user.id },

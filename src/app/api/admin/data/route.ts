@@ -24,6 +24,7 @@ export async function GET(req: NextRequest) {
     if (type === "bookings") {
       const bookings = await Booking.find({})
         .populate("artistId", "name genre image")
+        .populate("organizerId", "name email")
         .sort({ createdAt: -1 });
       return NextResponse.json({ success: true, data: bookings });
     }

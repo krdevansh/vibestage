@@ -11,6 +11,10 @@ export interface IBooking extends Document {
   organizerEmail: string;
   date: Date;
   venue: string;
+  proposedDates: Date[];
+  proposedVenues: string[];
+  acceptedDate: Date;
+  acceptedVenue: string;
   budget: number;
   basePrice: number;
   finalPrice: number;
@@ -19,6 +23,11 @@ export interface IBooking extends Document {
   status: "pending" | "accepted" | "rejected" | "paid" | "completed" | "cancelled";
   advancePaid: boolean;
   paymentStatus: "unpaid" | "partial" | "paid";
+  paymentType: "full" | "advance";
+  advanceAmount: number;
+  organizerPaidAdmin: boolean;
+  adminPaidArtist: boolean;
+  adminPaymentId: string;
   paymentMethod: string;
   razorpayPaymentId: string;
   razorpayOrderId: string;
@@ -37,8 +46,12 @@ const BookingSchema = new Schema<IBooking>(
     organizerId: { type: Schema.Types.ObjectId, ref: "User", required: true },
     organizerName: { type: String, default: "" },
     organizerEmail: { type: String, required: true },
-    date: { type: Date, required: true },
-    venue: { type: String, required: true },
+    date: { type: Date },
+    venue: { type: String, default: "" },
+    proposedDates: [{ type: Date }],
+    proposedVenues: [{ type: String }],
+    acceptedDate: { type: Date },
+    acceptedVenue: { type: String, default: "" },
     budget: { type: Number, required: true },
     basePrice: { type: Number, required: true },
     finalPrice: { type: Number, required: true },
@@ -55,6 +68,11 @@ const BookingSchema = new Schema<IBooking>(
       enum: ["unpaid", "partial", "paid"],
       default: "unpaid",
     },
+    paymentType: { type: String, enum: ["full", "advance"], default: "full" },
+    advanceAmount: { type: Number, default: 0 },
+    organizerPaidAdmin: { type: Boolean, default: false },
+    adminPaidArtist: { type: Boolean, default: false },
+    adminPaymentId: { type: String, default: "" },
     paymentMethod: { type: String, default: "" },
     razorpayPaymentId: { type: String, default: "" },
     razorpayOrderId: { type: String, default: "" },

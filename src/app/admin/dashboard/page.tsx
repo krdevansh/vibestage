@@ -30,7 +30,10 @@ interface Artist {
     youtube?: string;
     website?: string;
   };
+  upiId?: string;
+  upiQrCode?: string;
   isAvailable?: boolean;
+  isVerified?: boolean;
   createdAt: string;
 }
 
@@ -48,10 +51,22 @@ interface Booking {
   eventName: string;
   artistId: { _id: string; name: string; genre: string; image: string };
   organizerEmail: string;
+  organizerId: { _id: string; name: string; email: string };
   date: string;
   venue: string;
+  acceptedDate: string;
+  acceptedVenue: string;
   budget: number;
+  finalPrice: number;
+  basePrice: number;
   status: string;
+  paymentStatus: string;
+  paymentType: string;
+  organizerPaidAdmin: boolean;
+  adminPaidArtist: boolean;
+  advanceAmount: number;
+  artistUserId: string;
+  artistPayout: number;
   createdAt: string;
 }
 
@@ -495,10 +510,10 @@ export default function AdminDashboard() {
                         <th className="text-left py-4 px-4 text-white/50 text-sm font-medium">Event</th>
                         <th className="text-left py-4 px-4 text-white/50 text-sm font-medium">Artist</th>
                         <th className="text-left py-4 px-4 text-white/50 text-sm font-medium">Organizer</th>
-                        <th className="text-left py-4 px-4 text-white/50 text-sm font-medium">Date</th>
-                        <th className="text-left py-4 px-4 text-white/50 text-sm font-medium">Venue</th>
+                        <th className="text-left py-4 px-4 text-white/50 text-sm font-medium">Date/Venue</th>
                         <th className="text-left py-4 px-4 text-white/50 text-sm font-medium">Amount</th>
                         <th className="text-left py-4 px-4 text-white/50 text-sm font-medium">Status</th>
+                        <th className="text-left py-4 px-4 text-white/50 text-sm font-medium">Payment</th>
                         <th className="text-left py-4 px-4 text-white/50 text-sm font-medium">Actions</th>
                       </tr>
                     </thead>
@@ -518,9 +533,12 @@ export default function AdminDashboard() {
                           </td>
                           <td className="py-4 px-4 text-white/70">{booking.organizerEmail}</td>
                           <td className="py-4 px-4 text-white/70">
-                            {new Date(booking.date).toLocaleDateString()}
+                            {booking.acceptedDate
+                              ? `${new Date(booking.acceptedDate).toLocaleDateString()}${booking.acceptedVenue ? ` @ ${booking.acceptedVenue}` : ""}`
+                              : booking.date
+                                ? new Date(booking.date).toLocaleDateString()
+                                : "TBD"}
                           </td>
-                          <td className="py-4 px-4 text-white/70">{booking.venue}</td>
                           <td className="py-4 px-4 text-white/70">₹{booking.budget?.toLocaleString()}</td>
                           <td className="py-4 px-4">
                             <span className={`px-2 py-1 rounded-full text-xs ${
@@ -533,13 +551,48 @@ export default function AdminDashboard() {
                             </span>
                           </td>
                           <td className="py-4 px-4">
-                            <button
-                              onClick={() => handleDelete(booking._id, "booking")}
-                              className="p-2 rounded-lg hover:bg-red-500/20 text-white/50 hover:text-red-400"
-                              title="Delete"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </button>
+                            <div className="flex flex-col gap-1 text-xs">
+                              {booking.organizerPaidAdmin && (
+                                <span className="text-green-400">Org Paid Admin ✓</span>
+                              )}
+                              {booking.adminPaidArtist && (
+                                <span className="text-green-400">Admin Paid Artist ✓</span>
+                              )}
+                              {!booking.organizerPaidAdmin && booking.status === "accepted" && (
+                                <span className="text-orange-400">Awaiting Org Payment</span>
+                              )}
+                            </div>
+                          </td>
+                          <td className="py-4 px-4">
+                            <div className="flex items-center gap-2">
+                              {/* Admin Pays Artist button */}
+                              {booking.organizerPaidAdmin && !booking.adminPaidArtist && booking.status === "accepted" && (
+                                <button
+                                  onClick={async () => {
+                                    const token = localStorage.getItem("token");
+                                    if (!confirm(`Release ₹${(booking.artistPayout || booking.basePrice || 0).toLocaleString()} to artist?`)) return;
+                                    const res = await fetch("/api/partner/bookings", {
+                                      method: "PUT",
+                                      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+                                      body: JSON.stringify({ bookingId: booking._id, action: "adminPaysArtist" })
+                                    });
+                                    const data = await res.json();
+                                    if (data.success) fetchData();
+                                  }}
+                                  className="px-3 py-1.5 rounded-lg bg-green-500/20 text-green-400 hover:bg-green-500/30 text-xs font-medium"
+                                  title="Release payment to artist"
+                                >
+                                  Pay Artist
+                                </button>
+                              )}
+                              <button
+                                onClick={() => handleDelete(booking._id, "booking")}
+                                className="p-2 rounded-lg hover:bg-red-500/20 text-white/50 hover:text-red-400"
+                                title="Delete"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            </div>
                           </td>
                         </tr>
                       ))}
@@ -582,13 +635,53 @@ export default function AdminDashboard() {
                     </div>
                   </div>
 
+                  {/* Pending Payouts List */}
+                  <div className="glass-card p-6 mb-6">
+                    <h3 className="text-lg font-semibold text-white mb-4">Pending Payouts to Artists</h3>
+                    {bookings.filter(b => b.organizerPaidAdmin && !b.adminPaidArtist).length > 0 ? (
+                      <div className="space-y-3">
+                        {bookings.filter(b => b.organizerPaidAdmin && !b.adminPaidArtist).map((booking) => (
+                          <div key={booking._id} className="flex items-center justify-between p-3 rounded-lg bg-white/[0.04]">
+                            <div>
+                              <p className="text-white font-medium">{booking.eventName}</p>
+                              <p className="text-sm text-white/40">
+                                {booking.artistId?.name} • ₹{(booking.artistPayout || booking.basePrice || 0).toLocaleString()}
+                              </p>
+                            </div>
+                            <div className="flex items-center gap-3">
+                              <span className="text-sm text-white/40">{booking.organizerEmail}</span>
+                              <button
+                                onClick={async () => {
+                                  const token = localStorage.getItem("token");
+                                  if (!confirm(`Release ₹${(booking.artistPayout || booking.basePrice || 0).toLocaleString()} to ${booking.artistId?.name}?`)) return;
+                                  const res = await fetch("/api/partner/bookings", {
+                                    method: "PUT",
+                                    headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+                                    body: JSON.stringify({ bookingId: booking._id, action: "adminPaysArtist" })
+                                  });
+                                  const data = await res.json();
+                                  if (data.success) fetchData();
+                                }}
+                                className="px-3 py-1.5 rounded-lg bg-green-500/20 text-green-400 hover:bg-green-500/30 text-xs font-medium"
+                              >
+                                Release Payment
+                              </button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="text-white/40">No pending payouts</p>
+                    )}
+                  </div>
+
                   <div className="glass-card p-6">
                     <h3 className="text-lg font-semibold text-white mb-4">Payout Instructions</h3>
                     <div className="space-y-3 text-white/60 text-sm">
-                      <p>• Admin manually processes payouts to artists via UPI/Bank Transfer</p>
-                      <p>• After artist completes the event, mark payout as "Paid"</p>
-                      <p>• Track all payouts in this section</p>
-                      <p>• Commission is automatically calculated (30% of booking amount)</p>
+                      <p>• When organizer pays full amount, admin releases payment to artist</p>
+                      <p>• For advance payments (30%), organizer pays admin 30% and remaining to artist directly</p>
+                      <p>• Artist UPI details are visible in their profile for manual transfer</p>
+                      <p>• Commission (30%) is automatically calculated from booking amount</p>
                     </div>
                   </div>
                 </div>
@@ -684,6 +777,25 @@ export default function AdminDashboard() {
                     </div>
                   </div>
                 )}
+
+                {/* UPI Payment Details - Admin Only */}
+                <div className="mt-4 p-4 rounded-xl bg-brand-orange/10 border border-brand-orange/30">
+                  <p className="text-sm text-brand-orange font-semibold mb-2">UPI Payment Details (Admin Only)</p>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <p className="text-white/40 text-xs">UPI ID</p>
+                      <p className="text-white font-medium">{(selectedProfile.data as Artist).upiId || "Not set"}</p>
+                    </div>
+                  </div>
+                  {(selectedProfile.data as Artist).upiQrCode && (
+                    <div className="mt-2">
+                      <p className="text-white/40 text-xs mb-1">UPI QR Code</p>
+                      <div className="w-24 h-24 rounded-lg overflow-hidden border border-white/[0.08]">
+                        <Image src={(selectedProfile.data as Artist).upiQrCode!} alt="UPI QR" width={96} height={96} className="w-full h-full object-cover" />
+                      </div>
+                    </div>
+                  )}
+                </div>
               </div>
             ) : (
               <div className="space-y-4">

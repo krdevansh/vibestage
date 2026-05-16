@@ -29,10 +29,26 @@ export async function POST(request: NextRequest) {
 
     await connectDB();
     const body = await request.json();
-    const { artistId, eventName, eventType, date, venue, notes } = body;
+    const { artistId, eventName, eventType, proposedDates, proposedVenues, notes } = body;
 
-    if (!artistId || !eventName || !date || !venue) {
-      return NextResponse.json({ success: false, error: "Missing required fields" }, { status: 400 });
+    if (!artistId || !eventName || !proposedDates || !proposedDates.length || !proposedVenues || !proposedVenues.length) {
+      return NextResponse.json({ success: false, error: "Missing required fields (artistId, eventName, proposedDates, proposedVenues)" }, { status: 400 });
+    }
+
+    if (proposedDates.length > 5 || proposedVenues.length > 5) {
+      return NextResponse.json({ success: false, error: "Maximum 5 dates and 5 venues allowed" }, { status: 400 });
+    }
+
+    // Validate dates are in the future (tomorrow onwards)
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+
+    for (const d of proposedDates) {
+      if (new Date(d) < tomorrow) {
+        return NextResponse.json({ success: false, error: "All dates must be from tomorrow onwards" }, { status: 400 });
+      }
     }
 
     // Get artist details
@@ -57,8 +73,8 @@ export async function POST(request: NextRequest) {
       organizerId: user.id,
       organizerName: user.name,
       organizerEmail: user.email,
-      date: new Date(date),
-      venue,
+      proposedDates: proposedDates.map((d: string) => new Date(d)),
+      proposedVenues,
       budget: finalPrice,
       basePrice,
       finalPrice,
@@ -116,13 +132,19 @@ export async function GET(request: NextRequest) {
 export async function PUT(request: NextRequest) {
   try {
     const user = getUserFromToken(request);
-    if (!user || user.role !== "event_partner") {
+    if (!user || (user.role !== "event_partner" && user.role !== "admin")) {
       return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
     }
 
     await connectDB();
     const body = await request.json();
-    const { bookingId, action, paymentStatus } = body;
+    const { bookingId, action, paymentStatus, paymentType } = body;
+
+    // Build query filter based on role
+    const queryFilter: any = { _id: bookingId };
+    if (user.role === "event_partner") {
+      queryFilter.organizerId = user.id;
+    }
 
     const updateFields: any = {};
     
@@ -134,14 +156,45 @@ export async function PUT(request: NextRequest) {
       }
       if (action === "complete") {
         updateFields.status = "completed";
+      }
+      if (action === "payAdmin") {
+        if (user.role !== "event_partner") {
+          return NextResponse.json({ success: false, error: "Only organizers can pay admin" }, { status: 403 });
+        }
+        updateFields.organizerPaidAdmin = true;
+        if (paymentType === "advance") {
+          updateFields.paymentStatus = "partial";
+          updateFields.paymentType = "advance";
+          updateFields.advancePaid = true;
+          const advanceAmount = Math.round((body.advanceAmount || 0));
+          if (advanceAmount > 0) updateFields.advanceAmount = advanceAmount;
+        } else {
+          updateFields.paymentStatus = "paid";
+          updateFields.paymentType = "full";
+        }
+      }
+      if (action === "payArtistRemaining") {
+        if (user.role !== "event_partner") {
+          return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 403 });
+        }
+        updateFields.adminPaidArtist = true;
         updateFields.paymentStatus = "paid";
+        updateFields.status = "paid";
+      }
+      if (action === "adminPaysArtist") {
+        if (user.role !== "admin") {
+          return NextResponse.json({ success: false, error: "Only admin can mark artist payment" }, { status: 403 });
+        }
+        updateFields.adminPaidArtist = true;
+        updateFields.paymentStatus = "paid";
+        updateFields.status = "paid";
       }
     }
     
     if (paymentStatus) updateFields.paymentStatus = paymentStatus;
 
     const booking = await Booking.findOneAndUpdate(
-      { _id: bookingId, organizerId: user.id },
+      queryFilter,
       { $set: updateFields },
       { new: true }
     );
@@ -153,10 +206,41 @@ export async function PUT(request: NextRequest) {
     // Notify artist
     if (action === "cancel" || action === "markPaid" || action === "complete") {
       await Notification.create({
-        userId: booking.artistId,
+        userId: booking.artistUserId,
         type: action === "complete" ? "booking_completed" : "general",
         title: action === "cancel" ? "Booking Cancelled" : action === "markPaid" ? "Payment Received" : "Booking Completed",
         message: `Booking "${booking.eventName}" has been ${action === "cancel" ? "cancelled" : action === "markPaid" ? "marked as paid" : "completed"}`,
+        bookingId: booking._id
+      });
+    }
+
+    // Notify about admin payment
+    if (action === "payAdmin") {
+      await Notification.create({
+        userId: booking.artistUserId,
+        type: "payment",
+        title: paymentType === "advance" ? "Advance Payment Received by Admin" : "Full Payment Received by Admin",
+        message: `Payment of ₹${paymentType === "advance" ? (booking.advanceAmount || Math.round(booking.finalPrice * 0.3)) : booking.finalPrice} received by admin for "${booking.eventName}"`,
+        bookingId: booking._id
+      });
+    }
+
+    if (action === "payArtistRemaining") {
+      await Notification.create({
+        userId: booking.artistUserId,
+        type: "payment",
+        title: "Remaining Payment Received",
+        message: `Remaining payment of ₹${(booking.finalPrice - (booking.advanceAmount || Math.round(booking.finalPrice * 0.3))).toLocaleString()} received for "${booking.eventName}"`,
+        bookingId: booking._id
+      });
+    }
+
+    if (action === "adminPaysArtist") {
+      await Notification.create({
+        userId: booking.artistUserId,
+        type: "payout",
+        title: "Admin Released Payment",
+        message: `Payment of ₹${booking.artistPayout.toLocaleString()} has been sent to your account for "${booking.eventName}"`,
         bookingId: booking._id
       });
     }
