@@ -162,9 +162,13 @@ export default function ArtistDashboard() {
     reader.onload = async () => {
       setUploading(true);
       try {
+        const token = localStorage.getItem("token");
         const res = await fetch("/api/upload", {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: { 
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${token}`
+          },
           body: JSON.stringify({ file: reader.result, folder: type, type })
         });
         const data = await res.json();
