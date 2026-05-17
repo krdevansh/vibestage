@@ -93,6 +93,7 @@ export default function ArtistDashboard() {
   const [stats, setStats] = useState<DashboardStats>({ totalBookings: 0, totalEarnings: 0, pendingPayouts: 0 });
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
+  const [sessions, setSessions] = useState<any[]>([]);
   
   // Form states
   const [profileForm, setProfileForm] = useState({
@@ -106,6 +107,7 @@ export default function ArtistDashboard() {
   const [successMsg, setSuccessMsg] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
   const coverInputRef = useRef<HTMLInputElement>(null);
+  const upiQrInputRef = useRef<HTMLInputElement>(null);
 
   const fetchArtistData = useCallback(async () => {
     const token = localStorage.getItem("token");
@@ -160,6 +162,14 @@ export default function ArtistDashboard() {
         setNotifications(notifData.data.notifications);
         setUnreadCount(notifData.data.unreadCount);
       }
+
+      const sessionsRes = await fetch("/api/sessions", {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      const sessionsData = await sessionsRes.json();
+      if (sessionsData.success) {
+        setSessions(sessionsData.data.sessions);
+      }
     } catch (error) {
       console.error("Error fetching artist data:", error);
     }
@@ -190,6 +200,8 @@ export default function ArtistDashboard() {
             setProfileForm({ ...profileForm, coverImage: data.url });
           } else if (type === "gallery") {
             setGallery([...gallery, data.url]);
+          } else if (type === "upiQr") {
+            setProfileForm({ ...profileForm, upiQrCode: data.url });
           }
         }
         if (!data.success) {
@@ -359,6 +371,7 @@ export default function ArtistDashboard() {
             { id: "history", icon: ChevronRight, label: "Booking History" },
             { id: "earnings", icon: DollarSign, label: "Earnings" },
             { id: "notifications", icon: Bell, label: "Notifications" },
+            { id: "sessions", icon: Eye, label: "Sessions" },
           ].map((item) => (
             <button
               key={item.id}
@@ -664,18 +677,45 @@ export default function ArtistDashboard() {
                     <input type="text" value={profileForm.upiId} onChange={(e) => setProfileForm({ ...profileForm, upiId: e.target.value })} placeholder="yourname@upi" className="w-full px-4 py-3 rounded-xl bg-white/[0.04] border border-white/[0.08] text-white" />
                   </div>
                   <div>
-                    <label className="block text-sm text-white/40 mb-1.5">UPI QR Code URL</label>
-                    <input type="text" value={profileForm.upiQrCode} onChange={(e) => setProfileForm({ ...profileForm, upiQrCode: e.target.value })} placeholder="https://..." className="w-full px-4 py-3 rounded-xl bg-white/[0.04] border border-white/[0.08] text-white" />
+                    <label className="block text-sm text-white/40 mb-1.5">UPI QR Code</label>
+                    {profileForm.upiQrCode ? (
+                      <div className="relative">
+                        <div className="w-32 h-32 rounded-xl overflow-hidden border border-white/[0.08] mb-2">
+                          <Image src={profileForm.upiQrCode} alt="UPI QR Code" width={128} height={128} className="w-full h-full object-cover" />
+                        </div>
+                        <div className="flex gap-2">
+                          <button
+                            onClick={() => upiQrInputRef.current?.click()}
+                            className="px-3 py-1.5 rounded-lg bg-white/[0.04] text-white/60 hover:text-white text-xs"
+                          >
+                            Change
+                          </button>
+                          <button
+                            onClick={() => setProfileForm({ ...profileForm, upiQrCode: "" })}
+                            className="px-3 py-1.5 rounded-lg bg-red-500/20 text-red-400 hover:bg-red-500/30 text-xs"
+                          >
+                            Remove
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div
+                        onClick={() => upiQrInputRef.current?.click()}
+                        className="flex flex-col items-center justify-center w-32 h-32 rounded-xl border border-dashed border-white/20 text-white/50 hover:text-white hover:border-brand-orange/50 cursor-pointer transition-colors"
+                      >
+                        <Upload className="w-6 h-6 mb-1" />
+                        <span className="text-xs">{uploading === "upiQr" ? "Uploading..." : "Upload QR"}</span>
+                      </div>
+                    )}
+                    <input
+                      ref={upiQrInputRef}
+                      type="file"
+                      accept="image/*"
+                      onChange={(e) => handleImageUpload(e, "upiQr" as any)}
+                      className="hidden"
+                    />
                   </div>
                 </div>
-                {profileForm.upiQrCode && (
-                  <div className="mt-4">
-                    <p className="text-sm text-white/40 mb-2">QR Code Preview:</p>
-                    <div className="w-32 h-32 rounded-xl overflow-hidden border border-white/[0.08]">
-                      <Image src={profileForm.upiQrCode} alt="UPI QR Code" width={128} height={128} className="w-full h-full object-cover" />
-                    </div>
-                  </div>
-                )}
               </div>
 
               <button onClick={saveProfile} disabled={saving} className="btn-primary w-full">
@@ -925,6 +965,74 @@ export default function ArtistDashboard() {
             ) : (
               <div className="glass-card p-12 text-center">
                 <p className="text-white/40">No notifications</p>
+              </div>
+            )}
+          </div>
+          )}
+
+        {/* Sessions Tab */}
+        {activeTab === "sessions" && (
+          <div>
+            <h2 className="text-2xl font-display font-bold text-white mb-6">Active Sessions</h2>
+            <p className="text-white/40 text-sm mb-6">
+              Showing your active login sessions. You can have up to 3 concurrent sessions.
+            </p>
+
+            {sessions.length > 0 ? (
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead>
+                    <tr className="border-b border-white/[0.06]">
+                      <th className="text-left py-4 px-4 text-white/50 text-sm font-medium">#</th>
+                      <th className="text-left py-4 px-4 text-white/50 text-sm font-medium">Device</th>
+                      <th className="text-left py-4 px-4 text-white/50 text-sm font-medium">IP Address</th>
+                      <th className="text-left py-4 px-4 text-white/50 text-sm font-medium">Logged In</th>
+                      <th className="text-left py-4 px-4 text-white/50 text-sm font-medium">Last Active</th>
+                      <th className="text-left py-4 px-4 text-white/50 text-sm font-medium">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {sessions.map((session: any, idx: number) => (
+                      <tr key={session._id} className="border-b border-white/[0.04] hover:bg-white/[0.02]">
+                        <td className="py-4 px-4 text-white/50 text-sm">{idx + 1}</td>
+                        <td className="py-4 px-4 text-white/70 text-sm max-w-[300px] truncate" title={session.deviceInfo}>
+                          {session.deviceInfo}
+                        </td>
+                        <td className="py-4 px-4 text-white/70 text-sm">{session.ipAddress}</td>
+                        <td className="py-4 px-4 text-white/50 text-sm">{new Date(session.createdAt).toLocaleString()}</td>
+                        <td className="py-4 px-4 text-white/50 text-sm">{new Date(session.lastActive).toLocaleString()}</td>
+                        <td className="py-4 px-4">
+                          <button
+                            onClick={async () => {
+                              const token = localStorage.getItem("token");
+                              if (!confirm("Terminate this session? You will be logged out on that device.")) return;
+                              const res = await fetch(`/api/sessions?sessionId=${session._id}`, {
+                                method: "DELETE",
+                                headers: { Authorization: `Bearer ${token}` }
+                              });
+                              const data = await res.json();
+                              if (data.success) {
+                                const token2 = localStorage.getItem("token");
+                                const res2 = await fetch("/api/sessions", {
+                                  headers: { Authorization: `Bearer ${token2}` }
+                                });
+                                const data2 = await res2.json();
+                                if (data2.success) setSessions(data2.data.sessions);
+                              }
+                            }}
+                            className="px-2 py-1 rounded-lg bg-red-500/20 text-red-400 hover:bg-red-500/30 text-xs"
+                          >
+                            Terminate
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ) : (
+              <div className="glass-card p-12 text-center">
+                <p className="text-white/40">No active sessions</p>
               </div>
             )}
           </div>

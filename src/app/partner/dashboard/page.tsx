@@ -586,7 +586,14 @@ export default function PartnerDashboard() {
                       <Image src={artist.image} alt={artist.name} fill className="object-cover" />
                       <div className="absolute top-2 right-2 px-2 py-1 rounded-full text-xs bg-brand-bg/80 text-white">{artist.genre}</div>
                     </div>
-                    <h3 className="text-white font-semibold">{artist.name}</h3>
+                    <h3 className="text-white font-semibold flex items-center gap-2">
+                      {artist.name}
+                      {artist.isVerified ? (
+                        <span className="px-1.5 py-0.5 rounded text-[10px] bg-blue-500/20 text-blue-400 font-semibold">Verified</span>
+                      ) : (
+                        <span className="px-1.5 py-0.5 rounded text-[10px] bg-yellow-500/20 text-yellow-400 font-semibold">Unverified</span>
+                      )}
+                    </h3>
                     <p className="text-sm text-white/40 flex items-center gap-1"><MapPin className="w-3 h-3" /> {artist.location}</p>
                     <div className="flex items-center justify-between mt-3">
                       <div>

@@ -98,7 +98,7 @@ interface AdminNotification {
   bookingId?: string;
 }
 
-type Tab = "analytics" | "artists" | "partners" | "bookings" | "payouts" | "notifications" | "settings";
+type Tab = "analytics" | "artists" | "partners" | "bookings" | "payouts" | "notifications" | "settings" | "sessions";
 
 export default function AdminDashboard() {
   const router = useRouter();
@@ -122,6 +122,8 @@ export default function AdminDashboard() {
   const [savingSettings, setSavingSettings] = useState(false);
   const [settingsMsg, setSettingsMsg] = useState("");
   const settingsQrRef = useRef<HTMLInputElement>(null);
+  const [allSessions, setAllSessions] = useState<any[]>([]);
+  const [sessionsView, setSessionsView] = useState<string>("all");
 
   useEffect(() => {
     const checkAuth = () => {
@@ -200,6 +202,13 @@ export default function AdminDashboard() {
           setSettings(data.data);
           setSettingsForm({ platformUpiId: data.data.platformUpiId || "", platformUpiQrCode: data.data.platformUpiQrCode || "" });
         }
+      } else if (activeTab === "sessions") {
+        const token = localStorage.getItem("token");
+        const res = await fetch("/api/sessions", {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        const data = await res.json();
+        if (data.success) setAllSessions(data.data.sessions);
       }
     } catch (error) {
       console.error("Fetch error:", error);
@@ -261,6 +270,7 @@ export default function AdminDashboard() {
     { id: "partners", label: "Partners", icon: Users },
     { id: "bookings", label: "Bookings", icon: Calendar },
     { id: "payouts", label: "Payouts", icon: CreditCard },
+    { id: "sessions", label: "Sessions", icon: Eye },
     { id: "notifications", label: "Notifications", icon: Bell },
     { id: "settings", label: "Payment Settings", icon: CreditCard },
   ];
@@ -427,7 +437,14 @@ export default function AdminDashboard() {
                                 <Image src={artist.image} alt={artist.name} fill className="object-cover" />
                               </div>
                               <div>
-                                <p className="text-white font-medium">{artist.name}</p>
+                                <p className="text-white font-medium">
+                                  {artist.name}
+                                  {(artist as any).isVerified ? (
+                                    <span className="ml-2 px-1.5 py-0.5 rounded text-[10px] bg-blue-500/20 text-blue-400 font-semibold align-middle">Verified</span>
+                                  ) : (
+                                    <span className="ml-2 px-1.5 py-0.5 rounded text-[10px] bg-yellow-500/20 text-yellow-400 font-semibold align-middle">Unverified</span>
+                                  )}
+                                </p>
                                 <p className="text-white/40 text-xs">{artist.bio || "No bio"}</p>
                               </div>
                             </div>
@@ -444,7 +461,23 @@ export default function AdminDashboard() {
                           </td>
                           <td className="py-4 px-4">
                             <div className="flex items-center gap-2">
-                              {!(artist as any).isVerified && (
+                              {(artist as any).isVerified ? (
+                                <button
+                                  onClick={async () => {
+                                    const token = localStorage.getItem("token");
+                                    await fetch("/api/admin/users", {
+                                      method: "PUT",
+                                      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+                                      body: JSON.stringify({ userId: artist._id, action: "unverify", type: "artist" })
+                                    });
+                                    fetchData();
+                                  }}
+                                  className="p-2 rounded-lg bg-yellow-500/20 text-yellow-400 hover:bg-yellow-500/30"
+                                  title="Unverify Artist"
+                                >
+                                  <XCircle className="w-4 h-4" />
+                                </button>
+                              ) : (
                                 <button
                                   onClick={async () => {
                                     const token = localStorage.getItem("token");
@@ -872,6 +905,78 @@ export default function AdminDashboard() {
                 </div>
               ) : (
                 <div className="text-center py-20 text-white/50">No payout data</div>
+              )}
+            </div>
+          )}
+
+          {/* Sessions Tab */}
+          {activeTab === "sessions" && (
+            <div>
+              <h2 className="text-2xl font-display font-bold text-white mb-6">Active Sessions</h2>
+              <p className="text-white/40 text-sm mb-6">
+                Showing your active login sessions. Admins can have up to 5 concurrent sessions.
+              </p>
+
+              {dataLoading ? (
+                <div className="flex justify-center py-20">
+                  <div className="w-10 h-10 border-2 border-brand-orange/30 border-t-brand-orange rounded-full animate-spin" />
+                </div>
+              ) : allSessions.length > 0 ? (
+                <div className="overflow-x-auto">
+                  <table className="w-full">
+                    <thead>
+                      <tr className="border-b border-white/[0.06]">
+                        <th className="text-left py-4 px-4 text-white/50 text-sm font-medium">#</th>
+                        <th className="text-left py-4 px-4 text-white/50 text-sm font-medium">Device</th>
+                        <th className="text-left py-4 px-4 text-white/50 text-sm font-medium">IP Address</th>
+                        <th className="text-left py-4 px-4 text-white/50 text-sm font-medium">Logged In</th>
+                        <th className="text-left py-4 px-4 text-white/50 text-sm font-medium">Last Active</th>
+                        <th className="text-left py-4 px-4 text-white/50 text-sm font-medium">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {allSessions.map((session: any, idx: number) => (
+                        <tr key={session._id} className="border-b border-white/[0.04] hover:bg-white/[0.02]">
+                          <td className="py-4 px-4 text-white/50 text-sm">{idx + 1}</td>
+                          <td className="py-4 px-4 text-white/70 text-sm max-w-[300px] truncate" title={session.deviceInfo}>
+                            {session.deviceInfo}
+                          </td>
+                          <td className="py-4 px-4 text-white/70 text-sm">{session.ipAddress}</td>
+                          <td className="py-4 px-4 text-white/50 text-sm">{new Date(session.createdAt).toLocaleString()}</td>
+                          <td className="py-4 px-4 text-white/50 text-sm">{new Date(session.lastActive).toLocaleString()}</td>
+                          <td className="py-4 px-4">
+                            <button
+                              onClick={async () => {
+                                const token = localStorage.getItem("token");
+                                if (!confirm("Terminate this session? The user will be logged out.")) return;
+                                const res = await fetch(`/api/sessions?sessionId=${session._id}`, {
+                                  method: "DELETE",
+                                  headers: { Authorization: `Bearer ${token}` }
+                                });
+                                const data = await res.json();
+                                if (data.success) {
+                                  const token2 = localStorage.getItem("token");
+                                  const res2 = await fetch("/api/sessions", {
+                                    headers: { Authorization: `Bearer ${token2}` }
+                                  });
+                                  const data2 = await res2.json();
+                                  if (data2.success) setAllSessions(data2.data.sessions);
+                                }
+                              }}
+                              className="px-2 py-1 rounded-lg bg-red-500/20 text-red-400 hover:bg-red-500/30 text-xs"
+                            >
+                              Terminate
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              ) : (
+                <div className="glass-card p-12 text-center">
+                  <p className="text-white/40">No active sessions</p>
+                </div>
               )}
             </div>
           )}

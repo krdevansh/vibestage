@@ -12,6 +12,7 @@ export interface Artist {
   image: string;
   rating: number;
   location: string;
+  isVerified?: boolean;
 }
 
 interface ArtistCardProps {
@@ -92,8 +93,13 @@ export default function ArtistCard({ artist, index, showPrice = false }: ArtistC
 
       {/* Content */}
       <div className="p-5">
-        <h3 className="text-lg font-display font-bold text-white group-hover:gradient-text transition-all duration-300">
+        <h3 className="text-lg font-display font-bold text-white group-hover:gradient-text transition-all duration-300 flex items-center gap-2">
           {artist.name}
+          {artist.isVerified ? (
+            <span className="px-1.5 py-0.5 rounded text-[10px] bg-blue-500/20 text-blue-400 font-semibold">Verified</span>
+          ) : (
+            <span className="px-1.5 py-0.5 rounded text-[10px] bg-yellow-500/20 text-yellow-400 font-semibold">Unverified</span>
+          )}
         </h3>
         <p className="text-sm text-white/40 mt-1 flex items-center gap-1.5">
           <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">

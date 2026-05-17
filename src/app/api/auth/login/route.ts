@@ -1,10 +1,17 @@
 import { NextRequest, NextResponse } from "next/server";
 import connectDB from "@/lib/mongodb";
 import User from "@/models/User";
+import Session from "@/models/Session";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 
 const JWT_SECRET = process.env.JWT_SECRET || "vibestage_dev_secret";
+
+const MAX_SESSIONS: Record<string, number> = {
+  admin: 5,
+  event_partner: 3,
+  artist: 3,
+};
 
 // POST /api/auth/login
 export async function POST(req: NextRequest) {
@@ -48,6 +55,29 @@ export async function POST(req: NextRequest) {
       JWT_SECRET,
       { expiresIn: "7d" }
     );
+
+    // Track session
+    const deviceInfo = req.headers.get("user-agent") || "Unknown";
+    const ipAddress = req.headers.get("x-forwarded-for") || req.headers.get("x-real-ip") || "Unknown";
+    const role = user.role;
+    const maxAllowed = MAX_SESSIONS[role] || 3;
+
+    // Count existing active sessions
+    const activeSessions = await Session.countDocuments({ userId: user._id });
+
+    // If at limit, remove oldest session
+    if (activeSessions >= maxAllowed) {
+      const oldest = await Session.findOne({ userId: user._id }).sort({ createdAt: 1 });
+      if (oldest) await Session.deleteOne({ _id: oldest._id });
+    }
+
+    await Session.create({
+      userId: user._id,
+      token,
+      deviceInfo: deviceInfo.substring(0, 500),
+      ipAddress: ipAddress.substring(0, 50),
+      lastActive: new Date(),
+    });
 
     return NextResponse.json({
       success: true,

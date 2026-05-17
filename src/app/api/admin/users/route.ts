@@ -78,6 +78,21 @@ export async function PUT(request: NextRequest) {
       }
     }
 
+    if (action === "unverify") {
+      if (type === "artist") {
+        const artist = await Artist.findById(userId);
+        if (!artist) {
+          return NextResponse.json({ success: false, error: "Artist not found" }, { status: 404 });
+        }
+        artist.isVerified = false;
+        artist.verifiedAt = null;
+        await artist.save();
+
+        await User.findByIdAndUpdate(artist.userId, { isVerified: false });
+        return NextResponse.json({ success: true, message: "Artist unverified" });
+      }
+    }
+
     if (action === "block") {
       const userToBlock = await User.findById(userId);
       if (!userToBlock) {
