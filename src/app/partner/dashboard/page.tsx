@@ -5,8 +5,8 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
 import { 
-  LayoutDashboard, User, Music, Calendar, Bell, DollarSign, 
-  Plus, ChevronRight, LogOut, Check, X, Search, MapPin, Eye, Star, Settings, Upload
+  LayoutDashboard, User, Music, Calendar, Bell, 
+  ChevronRight, LogOut, Check, X, Search, MapPin, Eye, Star, Settings, Upload
 } from "lucide-react";
 import ArtistCard, { Artist } from "@/components/ArtistCard";
 
@@ -91,6 +91,8 @@ export default function PartnerDashboard() {
   const [showPaymentProofModal, setShowPaymentProofModal] = useState<string | null>(null);
   const [selectedPaymentType, setSelectedPaymentType] = useState<string | null>(null);
   const proofFileRef = useRef<HTMLInputElement>(null);
+  const [notifications, setNotifications] = useState<any[]>([]);
+  const [notifUnreadCount, setNotifUnreadCount] = useState(0);
 
   const fetchData = useCallback(async () => {
     const token = localStorage.getItem("token");
@@ -139,6 +141,15 @@ export default function PartnerDashboard() {
           companyName: profileData.data.companyName || "",
           profileImage: profileData.data.profileImage || ""
         });
+      }
+
+      const notifRes = await fetch("/api/partner/notifications", {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      const notifData = await notifRes.json();
+      if (notifData.success) {
+        setNotifications(notifData.data.notifications);
+        setNotifUnreadCount(notifData.data.unreadCount);
       }
     } catch (error) {
       console.error("Error fetching data:", error);
@@ -445,8 +456,8 @@ export default function PartnerDashboard() {
           {[
             { id: "dashboard", icon: LayoutDashboard, label: "Dashboard" },
             { id: "browse", icon: Music, label: "Browse Artists" },
-            { id: "create", icon: Plus, label: "Create Event" },
             { id: "bookings", icon: Calendar, label: "My Bookings" },
+            { id: "notifications", icon: Bell, label: "Notifications" },
             { id: "profile", icon: Settings, label: "Profile" },
             { id: "history", icon: ChevronRight, label: "History" },
           ].map((item) => (
@@ -463,6 +474,9 @@ export default function PartnerDashboard() {
               <span className="font-medium">{item.label}</span>
               {item.id === "bookings" && pendingBookings.length > 0 && (
                 <span className="ml-auto bg-brand-pink text-white text-xs px-2 py-0.5 rounded-full">{pendingBookings.length}</span>
+              )}
+              {item.id === "notifications" && notifUnreadCount > 0 && (
+                <span className="ml-auto bg-brand-pink text-white text-xs px-2 py-0.5 rounded-full">{notifUnreadCount}</span>
               )}
             </button>
           ))}
@@ -536,26 +550,22 @@ export default function PartnerDashboard() {
                     <p className="text-white font-medium">Browse Artists</p>
                     <p className="text-sm text-white/40">Find performers for your events</p>
                   </button>
-                  <button onClick={() => setActiveTab("create")} className="w-full text-left p-4 rounded-xl bg-white/[0.04] hover:bg-white/[0.06] transition-colors">
-                    <p className="text-white font-medium">Create New Event</p>
-                    <p className="text-sm text-white/40">Book an artist for your event</p>
-                  </button>
                 </div>
               </div>
 
               <div className="glass-card p-6">
-                <h3 className="text-lg font-semibold text-white mb-4">Pending Requests</h3>
-                {pendingBookings.length > 0 ? (
+                <h3 className="text-lg font-semibold text-white mb-4">Recent Bookings</h3>
+                {bookings.length > 0 ? (
                   <div className="space-y-3">
-                    {pendingBookings.slice(0, 3).map((booking) => (
+                    {bookings.slice(0, 3).map((booking) => (
                       <div key={booking._id} className="p-3 rounded-lg bg-white/[0.04]">
                         <p className="text-white font-medium">{booking.eventName}</p>
-                        <p className="text-sm text-white/40">{booking.artistName}</p>
+                        <p className="text-sm text-white/40">{booking.artistName || "Artist"} • {booking.status}</p>
                       </div>
                     ))}
                   </div>
                 ) : (
-                  <p className="text-white/40">No pending requests</p>
+                  <p className="text-white/40">No bookings yet</p>
                 )}
               </div>
             </div>
@@ -601,7 +611,7 @@ export default function PartnerDashboard() {
                         <span className="text-xs text-white/30">/show</span>
                       </div>
                       <button 
-                        onClick={() => { setSelectedArtist(artist); setActiveTab("create"); }}
+                        onClick={() => { setSelectedArtist(artist); setBookingForm({ ...bookingForm, artistId: artist._id }); }}
                         className="px-4 py-1.5 rounded-lg text-sm bg-brand-gradient text-white"
                       >
                         Book
@@ -617,8 +627,8 @@ export default function PartnerDashboard() {
             )}
 
             {selectedArtist && (
-              <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-brand-bg/90">
-                <div className="glass-card p-6 max-w-lg w-full">
+              <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-brand-bg/90 overflow-y-auto">
+                <div className="glass-card p-6 max-w-lg w-full my-8">
                   <div className="flex items-center gap-4 mb-4">
                     <Image src={selectedArtist.image} alt={selectedArtist.name} width={64} height={64} className="rounded-xl object-cover" />
                     <div>
@@ -627,9 +637,15 @@ export default function PartnerDashboard() {
                     </div>
                     <button onClick={() => setSelectedArtist(null)} className="ml-auto text-white/40"><X className="w-5 h-5" /></button>
                   </div>
+                  {bookingSuccess && (
+                    <div className="mb-4 p-3 rounded-xl bg-green-500/10 text-green-400 text-sm">{bookingSuccess}</div>
+                  )}
+                  {bookingError && (
+                    <div className="mb-4 p-3 rounded-xl bg-red-500/10 text-red-400 text-sm">{bookingError}</div>
+                  )}
                   <div className="space-y-4">
                     <div>
-                      <label className="block text-sm text-white/40 mb-1">Event Name</label>
+                      <label className="block text-sm text-white/40 mb-1">Event Name *</label>
                       <input type="text" value={bookingForm.eventName} onChange={(e) => setBookingForm({ ...bookingForm, eventName: e.target.value })} className="w-full px-4 py-3 rounded-xl bg-white/[0.04] border border-white/[0.08] text-white" placeholder="My Wedding" />
                     </div>
                     <div>
@@ -642,16 +658,52 @@ export default function PartnerDashboard() {
                         <option value="Festival">Festival</option>
                       </select>
                     </div>
+                    <div>
+                      <label className="block text-sm text-white/40 mb-1">Proposed Dates * (up to 5, future dates)</label>
+                      <div className="space-y-2">
+                        {bookingForm.dates.map((d, i) => (
+                          <div key={i} className="flex items-center gap-2">
+                            <input type="date" value={d} min={new Date(Date.now() + 86400000).toISOString().split("T")[0]}
+                              onChange={(e) => { const nd = [...bookingForm.dates]; nd[i] = e.target.value; setBookingForm({ ...bookingForm, dates: nd }); }}
+                              className="flex-1 px-4 py-3 rounded-xl bg-white/[0.04] border border-white/[0.08] text-white" />
+                            {i > 0 && d && (
+                              <button onClick={() => { const nd = [...bookingForm.dates]; nd[i] = ""; setBookingForm({ ...bookingForm, dates: nd }); }} className="text-red-400"><X className="w-4 h-4" /></button>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                    <div>
+                      <label className="block text-sm text-white/40 mb-1">Proposed Venues * (up to 5)</label>
+                      <div className="space-y-2">
+                        {bookingForm.venues.map((v, i) => (
+                          <div key={i} className="flex items-center gap-2">
+                            <input type="text" value={v} placeholder={i === 0 ? "Venue name" : `Venue option ${i + 1}`}
+                              onChange={(e) => { const nv = [...bookingForm.venues]; nv[i] = e.target.value; setBookingForm({ ...bookingForm, venues: nv }); }}
+                              className="flex-1 px-4 py-3 rounded-xl bg-white/[0.04] border border-white/[0.08] text-white" />
+                            {i > 0 && v && (
+                              <button onClick={() => { const nv = [...bookingForm.venues]; nv[i] = ""; setBookingForm({ ...bookingForm, venues: nv }); }} className="text-red-400"><X className="w-4 h-4" /></button>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                    <div>
+                      <label className="block text-sm text-white/40 mb-1">Notes</label>
+                      <textarea value={bookingForm.notes} onChange={(e) => setBookingForm({ ...bookingForm, notes: e.target.value })} rows={2} className="w-full px-4 py-3 rounded-xl bg-white/[0.04] border border-white/[0.08] text-white resize-none" />
+                    </div>
                     <div className="flex items-center justify-between p-3 rounded-lg bg-brand-orange/10">
                       <span className="text-white/40">Final Price:</span>
                       <span className="text-xl font-bold gradient-text">₹{calculateFinalPrice(selectedArtist.price).toLocaleString()}</span>
                     </div>
-                    <button 
-                      onClick={() => { setBookingForm({ ...bookingForm, artistId: selectedArtist._id }); setActiveTab("create"); }}
-                      className="btn-primary w-full"
-                    >
-                      Continue to Book
-                    </button>
+                    <div className="flex gap-3">
+                      <button onClick={() => setSelectedArtist(null)} className="flex-1 px-4 py-3 rounded-xl bg-white/[0.04] text-white/60 hover:text-white">
+                        Cancel
+                      </button>
+                      <button onClick={createBooking} disabled={bookingLoading} className="flex-1 btn-primary">
+                        <span>{bookingLoading ? "Sending..." : "Send Booking Request"}</span>
+                      </button>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -659,126 +711,7 @@ export default function PartnerDashboard() {
           </div>
         )}
 
-        {/* Create Event Tab */}
-        {activeTab === "create" && (
-          <div className="max-w-2xl">
-            <h2 className="text-2xl font-display font-bold text-white mb-6">Create Event & Book Artist</h2>
-            
-            {bookingSuccess && (
-              <div className="mb-6 p-4 rounded-xl bg-green-500/10 text-green-400">{bookingSuccess}</div>
-            )}
-            {bookingError && (
-              <div className="mb-6 p-4 rounded-xl bg-red-500/10 text-red-400">{bookingError}</div>
-            )}
 
-            {!bookingForm.artistId ? (
-              <div className="glass-card p-6 text-center">
-                <p className="text-white/40 mb-4">Select an artist first to create a booking</p>
-                <button onClick={() => setActiveTab("browse")} className="btn-primary">Browse Artists</button>
-              </div>
-            ) : (
-              <div className="space-y-6">
-                <div className="glass-card p-4">
-                  <div className="flex items-center gap-3">
-                    <Image src={artists.find(a => a._id === bookingForm.artistId)?.image || ""} alt="" width={48} height={48} className="rounded-lg object-cover" />
-                    <div>
-                      <p className="text-white font-medium">{artists.find(a => a._id === bookingForm.artistId)?.name}</p>
-                      <p className="text-sm text-brand-orange">₹{calculateFinalPrice(artists.find(a => a._id === bookingForm.artistId)?.price || 0).toLocaleString()}</p>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="glass-card p-6 space-y-4">
-                  <div>
-                    <label className="block text-sm text-white/40 mb-1.5">Event Name *</label>
-                    <input type="text" required value={bookingForm.eventName} onChange={(e) => setBookingForm({ ...bookingForm, eventName: e.target.value })} className="w-full px-4 py-3 rounded-xl bg-white/[0.04] border border-white/[0.08] text-white" />
-                  </div>
-                  <div>
-                    <label className="block text-sm text-white/40 mb-1.5">Event Type</label>
-                    <select value={bookingForm.eventType} onChange={(e) => setBookingForm({ ...bookingForm, eventType: e.target.value })} className="w-full px-4 py-3 rounded-xl bg-white/[0.04] border border-white/[0.08] text-white">
-                      <option value="Private Event">Private Event</option>
-                      <option value="Wedding">Wedding</option>
-                      <option value="Corporate">Corporate</option>
-                      <option value="Birthday">Birthday</option>
-                      <option value="Festival">Festival</option>
-                    </select>
-                  </div>
-
-                  {/* Proposed Dates (up to 5) */}
-                  <div>
-                    <label className="block text-sm text-white/40 mb-1.5">Proposed Dates * (up to 5, future dates only)</label>
-                    <div className="space-y-2">
-                      {bookingForm.dates.map((d, i) => (
-                        <div key={i} className="flex items-center gap-2">
-                          <input
-                            type="date"
-                            value={d}
-                            min={new Date(Date.now() + 86400000).toISOString().split("T")[0]}
-                            onChange={(e) => {
-                              const newDates = [...bookingForm.dates];
-                              newDates[i] = e.target.value;
-                              setBookingForm({ ...bookingForm, dates: newDates });
-                            }}
-                            className="flex-1 px-4 py-3 rounded-xl bg-white/[0.04] border border-white/[0.08] text-white"
-                          />
-                          {i > 0 && d && (
-                            <button onClick={() => {
-                              const newDates = [...bookingForm.dates];
-                              newDates[i] = "";
-                              setBookingForm({ ...bookingForm, dates: newDates });
-                            }} className="text-red-400 hover:text-red-300">
-                              <X className="w-4 h-4" />
-                            </button>
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Proposed Venues (up to 5) */}
-                  <div>
-                    <label className="block text-sm text-white/40 mb-1.5">Proposed Venues * (up to 5)</label>
-                    <div className="space-y-2">
-                      {bookingForm.venues.map((v, i) => (
-                        <div key={i} className="flex items-center gap-2">
-                          <input
-                            type="text"
-                            value={v}
-                            onChange={(e) => {
-                              const newVenues = [...bookingForm.venues];
-                              newVenues[i] = e.target.value;
-                              setBookingForm({ ...bookingForm, venues: newVenues });
-                            }}
-                            placeholder={i === 0 ? "Venue name" : `Venue option ${i + 1}`}
-                            className="flex-1 px-4 py-3 rounded-xl bg-white/[0.04] border border-white/[0.08] text-white"
-                          />
-                          {i > 0 && v && (
-                            <button onClick={() => {
-                              const newVenues = [...bookingForm.venues];
-                              newVenues[i] = "";
-                              setBookingForm({ ...bookingForm, venues: newVenues });
-                            }} className="text-red-400 hover:text-red-300">
-                              <X className="w-4 h-4" />
-                            </button>
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="block text-sm text-white/40 mb-1.5">Notes</label>
-                    <textarea value={bookingForm.notes} onChange={(e) => setBookingForm({ ...bookingForm, notes: e.target.value })} rows={3} className="w-full px-4 py-3 rounded-xl bg-white/[0.04] border border-white/[0.08] text-white resize-none" />
-                  </div>
-                </div>
-
-                <button onClick={createBooking} disabled={bookingLoading} className="btn-primary w-full">
-                  <span>{bookingLoading ? "Sending Request..." : "Send Booking Request"}</span>
-                </button>
-              </div>
-            )}
-          </div>
-        )}
 
         {/* My Bookings Tab */}
         {activeTab === "bookings" && (
@@ -971,6 +904,59 @@ export default function PartnerDashboard() {
           </div>
         )}
 
+        {/* Notifications Tab */}
+        {activeTab === "notifications" && (
+          <div className="max-w-3xl">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-2xl font-display font-bold text-white">Notifications</h2>
+              {notifUnreadCount > 0 && (
+                <button
+                  onClick={async () => {
+                    const token = localStorage.getItem("token");
+                    await fetch("/api/partner/notifications", {
+                      method: "PUT",
+                      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+                      body: JSON.stringify({ markAllRead: true })
+                    });
+                    fetchData();
+                  }}
+                  className="px-4 py-2 rounded-lg bg-white/[0.04] text-white/60 hover:text-white text-sm"
+                >
+                  Mark All Read
+                </button>
+              )}
+            </div>
+            {notifications.length > 0 ? (
+              <div className="space-y-3">
+                {notifications.map((notif: any) => (
+                  <div
+                    key={notif._id}
+                    onClick={async () => {
+                      if (notif.isRead) return;
+                      const token = localStorage.getItem("token");
+                      await fetch("/api/partner/notifications", {
+                        method: "PUT",
+                        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+                        body: JSON.stringify({ notificationId: notif._id })
+                      });
+                      fetchData();
+                    }}
+                    className={`glass-card p-4 cursor-pointer ${!notif.isRead ? "border-l-4 border-l-brand-orange" : ""}`}
+                  >
+                    <p className="text-white font-medium">{notif.title}</p>
+                    <p className="text-sm text-white/40">{notif.message}</p>
+                    <p className="text-xs text-white/30 mt-2">{new Date(notif.createdAt).toLocaleString()}</p>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="glass-card p-12 text-center">
+                <p className="text-white/40">No notifications</p>
+              </div>
+            )}
+          </div>
+        )}
+
         {/* Profile Tab */}
         {activeTab === "profile" && (
           <div className="max-w-3xl">
@@ -1068,9 +1054,31 @@ export default function PartnerDashboard() {
         {activeTab === "history" && (
           <div className="max-w-3xl">
             <h2 className="text-2xl font-display font-bold text-white mb-6">Booking History</h2>
-            <div className="glass-card p-6">
-              <p className="text-white/40">Your completed and cancelled bookings will appear here.</p>
-            </div>
+            {completedBookings.length > 0 || cancelledBookings.length > 0 ? (
+              <div className="space-y-3">
+                {[...completedBookings, ...cancelledBookings].map((booking) => (
+                  <div key={booking._id} className="glass-card p-4 flex items-center justify-between">
+                    <div>
+                      <p className="text-white font-medium">{booking.eventName}</p>
+                      <p className="text-sm text-white/40">
+                        {booking.artistName}
+                        {booking.acceptedDate ? ` • ${new Date(booking.acceptedDate).toLocaleDateString()}` : ""}
+                      </p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-brand-orange font-semibold">₹{booking.finalPrice.toLocaleString()}</p>
+                      <span className={`text-xs px-2 py-0.5 rounded-full ${
+                        booking.status === "completed" ? "bg-green-500/20 text-green-400" : "bg-red-500/20 text-red-400"
+                      }`}>{booking.status}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="glass-card p-12 text-center">
+                <p className="text-white/40">No booking history yet</p>
+              </div>
+            )}
           </div>
         )}
       </main>

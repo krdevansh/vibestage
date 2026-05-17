@@ -483,6 +483,25 @@ export default function ArtistDashboard() {
                 <p className="text-white/40">No pending bookings</p>
               )}
             </div>
+
+            <div className="glass-card p-6 mt-6">
+              <h3 className="text-lg font-semibold text-white mb-4">Rules to Get Verified Batch</h3>
+              <ul className="space-y-2 text-sm text-white/60">
+                <li className="flex items-start gap-2">
+                  <span className="text-brand-orange font-bold mt-0.5">1.</span>
+                  <span>Must have <strong className="text-white">1500 followers or above</strong> on Instagram (public profile)</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <span className="text-brand-orange font-bold mt-0.5">2.</span>
+                  <span>Must have <strong className="text-white">20 or above reels</strong> of singing</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <span className="text-brand-orange font-bold mt-0.5">3.</span>
+                  <span>Must have some proofs of performance on Instagram or YouTube channel</span>
+                </li>
+              </ul>
+              <p className="text-xs text-white/30 mt-4">Contact admin to get verified once you meet the criteria.</p>
+            </div>
           </div>
         )}
 

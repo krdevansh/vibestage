@@ -33,7 +33,7 @@ export default function ArtistsSection() {
   useEffect(() => {
     const fetchArtists = async () => {
       try {
-        const res = await fetch("/api/artists");
+        const res = await fetch("/api/artists?verified=true");
         const data = await res.json();
         if (data.success) {
           setArtists(data.data);
