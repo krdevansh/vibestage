@@ -64,6 +64,8 @@ interface Booking {
   adminPaidArtist: boolean;
   organizerName: string;
   organizerEmail: string;
+  advanceAmount: number;
+  organizerId?: { _id: string; name: string; email: string; phone: string };
 }
 
 interface Notification {
@@ -457,28 +459,42 @@ export default function ArtistDashboard() {
               </div>
             </div>
 
-            <div className="glass-card p-6">
-              <h3 className="text-lg font-semibold text-white mb-4">Upcoming Bookings</h3>
-              {upcomingBookings.length > 0 ? (
-                <div className="space-y-3">
-                  {upcomingBookings.slice(0, 3).map((booking) => (
-                    <div key={booking._id} className="flex items-center justify-between p-4 rounded-xl bg-white/[0.04]">
-                      <div>
-                        <p className="text-white font-medium">{booking.eventName}</p>
-                        <p className="text-sm text-white/40">
-                          {(booking.proposedDates || []).length > 0
-                            ? `${(booking.proposedDates || []).length} proposed dates`
-                            : new Date(booking.date).toLocaleDateString()
-                          } {(booking.proposedVenues || []).length > 0 ? `• ${(booking.proposedVenues || []).length} venues` : booking.venue}
-                        </p>
+              <div className="glass-card p-6">
+                <h3 className="text-lg font-semibold text-white mb-4">Upcoming Bookings</h3>
+                {upcomingBookings.length > 0 ? (
+                  <div className="space-y-3">
+                    {upcomingBookings.slice(0, 3).map((booking) => {
+                      const orgPhone = (booking.organizerId as any)?.phone || "";
+                      const advanceAmt = booking.advanceAmount || Math.round(booking.finalPrice * 0.3);
+                      const restAmt = booking.finalPrice - advanceAmt;
+                      return (
+                      <div key={booking._id} className="p-4 rounded-xl bg-white/[0.04]">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <p className="text-white font-medium">{booking.eventName}</p>
+                            <p className="text-sm text-white/40">
+                              {(booking.proposedDates || []).length > 0
+                                ? `${(booking.proposedDates || []).length} proposed dates`
+                                : new Date(booking.date).toLocaleDateString()
+                              } {(booking.proposedVenues || []).length > 0 ? `• ${(booking.proposedVenues || []).length} venues` : booking.venue}
+                            </p>
+                          </div>
+                          <div className="text-right">
+                            <p className="text-brand-orange font-semibold">₹{booking.finalPrice.toLocaleString()}</p>
+                            <p className="text-xs text-white/40">Your cut: ₹{booking.artistPayout.toLocaleString()}</p>
+                          </div>
+                        </div>
+                        {(booking.status === "accepted" || booking.status === "confirmed") && (
+                          <div className="mt-3 pt-3 border-t border-white/[0.06] space-y-1 text-sm">
+                            {booking.status === "confirmed" && booking.paymentType === "advance" && (
+                              <p className="text-brand-orange font-medium">Advance received. Ask rest ₹{restAmt.toLocaleString()} from organizer before show.</p>
+                            )}
+                            <p className="text-white/50">Contact: <span className="text-white">{booking.organizerName}</span> • <span className="text-white">{booking.organizerEmail}</span>{orgPhone ? <span> • <span className="text-white">{orgPhone}</span></span> : ""}</p>
+                          </div>
+                        )}
                       </div>
-                      <div className="text-right">
-                        <p className="text-brand-orange font-semibold">₹{booking.finalPrice.toLocaleString()}</p>
-                        <p className="text-xs text-white/40">Your cut: ₹{booking.artistPayout.toLocaleString()}</p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
+                    )})}
+                  </div>
               ) : (
                 <p className="text-white/40">No pending bookings</p>
               )}
@@ -875,32 +891,53 @@ export default function ArtistDashboard() {
             <h2 className="text-2xl font-display font-bold text-white mb-6">Booking History</h2>
             {bookings.length > 0 ? (
               <div className="space-y-3">
-                {bookings.map((booking) => (
-                    <div key={booking._id} className="glass-card p-4 flex items-center justify-between">
-                      <div>
-                        <p className="text-white font-medium">{booking.eventName}</p>
-                        <p className="text-sm text-white/40">
-                          {booking.organizerName}
-                          {booking.acceptedDate
-                            ? ` • ${new Date(booking.acceptedDate).toLocaleDateString()}`
-                            : booking.date
-                              ? ` • ${new Date(booking.date).toLocaleDateString()}`
-                              : ""
-                          }
-                        </p>
+                {bookings.map((booking) => {
+                  const orgPhone = (booking.organizerId as any)?.phone || "";
+                  const advanceAmt = booking.advanceAmount || Math.round(booking.finalPrice * 0.3);
+                  const restAmt = booking.finalPrice - advanceAmt;
+                  return (
+                    <div key={booking._id} className="glass-card p-4">
+                      <div className="flex items-center justify-between mb-2">
+                        <div>
+                          <p className="text-white font-medium">{booking.eventName}</p>
+                          <p className="text-sm text-white/40">
+                            {booking.organizerName}
+                            {booking.acceptedDate
+                              ? ` • ${new Date(booking.acceptedDate).toLocaleDateString()}`
+                              : booking.date
+                                ? ` • ${new Date(booking.date).toLocaleDateString()}`
+                                : ""
+                            }
+                          </p>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-brand-orange font-semibold">₹{booking.finalPrice.toLocaleString()}</p>
+                          <span className={`text-xs px-2 py-0.5 rounded-full ${
+                            booking.status === "completed" || booking.status === "confirmed" ? "bg-green-500/20 text-green-400" :
+                            booking.status === "accepted" ? "bg-blue-500/20 text-blue-400" :
+                            booking.status === "awaiting_confirmation" ? "bg-purple-500/20 text-purple-400" :
+                            booking.status === "rejected" || booking.status === "cancelled" ? "bg-red-500/20 text-red-400" :
+                            "bg-yellow-500/20 text-yellow-400"
+                          }`}>{booking.status === "awaiting_confirmation" ? "Verifying Payment" : booking.status}</span>
+                        </div>
                       </div>
-                    <div className="text-right">
-                      <p className="text-brand-orange font-semibold">₹{booking.finalPrice.toLocaleString()}</p>
-                      <span className={`text-xs px-2 py-0.5 rounded-full ${
-                        booking.status === "completed" || booking.status === "confirmed" ? "bg-green-500/20 text-green-400" :
-                        booking.status === "accepted" ? "bg-blue-500/20 text-blue-400" :
-                        booking.status === "awaiting_confirmation" ? "bg-purple-500/20 text-purple-400" :
-                        booking.status === "rejected" || booking.status === "cancelled" ? "bg-red-500/20 text-red-400" :
-                        "bg-yellow-500/20 text-yellow-400"
-                      }`}>{booking.status === "awaiting_confirmation" ? "Verifying Payment" : booking.status}</span>
+                      {(booking.status === "accepted" || booking.status === "confirmed" || booking.status === "awaiting_confirmation") && (
+                        <div className="mt-3 pt-3 border-t border-white/[0.06] space-y-2">
+                          {booking.status === "confirmed" && booking.paymentType === "advance" && (
+                            <p className="text-sm text-brand-orange font-medium">
+                              Advance received. Ask rest ₹{restAmt.toLocaleString()} from organizer before show.
+                            </p>
+                          )}
+                          <div className="text-sm text-white/50">
+                            <p>Organizer: <span className="text-white">{booking.organizerName}</span></p>
+                            <p>Email: <span className="text-white">{booking.organizerEmail}</span></p>
+                            {orgPhone && <p>Phone: <span className="text-white">{orgPhone}</span></p>}
+                          </div>
+                        </div>
+                      )}
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             ) : (
               <div className="glass-card p-12 text-center">

@@ -36,6 +36,12 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: false, error: "Missing required fields (artistId, eventName, proposedDates, proposedVenues)" }, { status: 400 });
     }
 
+    // Check organizer has saved phone number
+    const organizerUser = await User.findById(user.id).select("phone name email");
+    if (!organizerUser || !organizerUser.phone) {
+      return NextResponse.json({ success: false, error: "Please save your phone number in Profile before creating a booking. Artists need to contact you." }, { status: 400 });
+    }
+
     if (proposedDates.length > 5 || proposedVenues.length > 5) {
       return NextResponse.json({ success: false, error: "Maximum 5 dates and 5 venues allowed" }, { status: 400 });
     }
