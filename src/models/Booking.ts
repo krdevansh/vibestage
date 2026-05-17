@@ -20,9 +20,9 @@ export interface IBooking extends Document {
   finalPrice: number;
   adminCommission: number;
   artistPayout: number;
-  status: "pending" | "accepted" | "rejected" | "paid" | "completed" | "cancelled";
+  status: "pending" | "accepted" | "rejected" | "paid" | "completed" | "cancelled" | "awaiting_confirmation" | "confirmed";
   advancePaid: boolean;
-  paymentStatus: "unpaid" | "partial" | "paid";
+  paymentStatus: "unpaid" | "partial" | "paid" | "pending_verification";
   paymentType: "full" | "advance";
   advanceAmount: number;
   organizerPaidAdmin: boolean;
@@ -32,6 +32,11 @@ export interface IBooking extends Document {
   razorpayPaymentId: string;
   razorpayOrderId: string;
   paidAt: Date;
+  paymentProof: {
+    screenshot: string;
+    utr: string;
+    paidAt: Date;
+  };
   notes: string;
   createdAt: Date;
 }
@@ -59,13 +64,13 @@ const BookingSchema = new Schema<IBooking>(
     artistPayout: { type: Number, required: true },
     status: {
       type: String,
-      enum: ["pending", "accepted", "rejected", "paid", "completed", "cancelled"],
+      enum: ["pending", "accepted", "rejected", "paid", "completed", "cancelled", "awaiting_confirmation", "confirmed"],
       default: "pending",
     },
     advancePaid: { type: Boolean, default: false },
     paymentStatus: {
       type: String,
-      enum: ["unpaid", "partial", "paid"],
+      enum: ["unpaid", "partial", "paid", "pending_verification"],
       default: "unpaid",
     },
     paymentType: { type: String, enum: ["full", "advance"], default: "full" },
@@ -77,6 +82,11 @@ const BookingSchema = new Schema<IBooking>(
     razorpayPaymentId: { type: String, default: "" },
     razorpayOrderId: { type: String, default: "" },
     paidAt: { type: Date },
+    paymentProof: {
+      screenshot: { type: String, default: "" },
+      utr: { type: String, default: "" },
+      paidAt: { type: Date },
+    },
     notes: { type: String, default: "" },
   },
   { timestamps: true }

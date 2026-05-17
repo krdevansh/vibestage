@@ -36,8 +36,13 @@ interface Booking {
   adminPaidArtist: boolean;
   advanceAmount: number;
   artistName: string;
-  artistId: { _id: string; name: string; genre: string[]; image: string; location: string };
+  artistId: { _id: string; name: string; genre: string[]; image: string; location: string; upiId: string; upiQrCode: string };
   artistImage: string;
+  paymentProof: {
+    screenshot: string;
+    utr: string;
+    paidAt: string;
+  };
 }
 
 interface DashboardStats {
@@ -78,8 +83,13 @@ export default function PartnerDashboard() {
   const [uploading, setUploading] = useState(false);
   const [payingBooking, setPayingBooking] = useState<string | null>(null);
   const [paymentSuccess, setPaymentSuccess] = useState("");
+  const [platformSettings, setPlatformSettings] = useState({ platformUpiId: "", platformUpiQrCode: "" });
   const [reviewForm, setReviewForm] = useState({ rating: 5, comment: "" });
   const [showReviewModal, setShowReviewModal] = useState<string | null>(null);
+  const [paymentProofForm, setPaymentProofForm] = useState({ screenshot: "", utr: "", paidAt: "" });
+  const [uploadingProof, setUploadingProof] = useState(false);
+  const [showPaymentProofModal, setShowPaymentProofModal] = useState<string | null>(null);
+  const proofFileRef = useRef<HTMLInputElement>(null);
 
   const fetchData = useCallback(async () => {
     const token = localStorage.getItem("token");
@@ -93,7 +103,7 @@ export default function PartnerDashboard() {
       if (bookingsData.success) {
         setBookings(bookingsData.data);
         const total = bookingsData.data.reduce((sum: number, b: Booking) => sum + b.finalPrice, 0);
-        const upcoming = bookingsData.data.filter((b: Booking) => b.status === "accepted" || b.status === "paid");
+        const upcoming = bookingsData.data.filter((b: Booking) => b.status === "accepted" || b.status === "confirmed" || b.status === "awaiting_confirmation");
         setStats({
           totalBookings: bookingsData.data.length,
           upcomingEvents: upcoming.length,
@@ -105,6 +115,13 @@ export default function PartnerDashboard() {
       const artistsData = await artistsRes.json();
       if (artistsData.success) {
         setArtists(artistsData.data);
+      }
+
+      // Fetch platform payment settings
+      const settingsRes = await fetch("/api/admin/settings");
+      const settingsData = await settingsRes.json();
+      if (settingsData.success) {
+        setPlatformSettings(settingsData.data);
       }
 
       // Fetch partner profile
@@ -226,60 +243,74 @@ export default function PartnerDashboard() {
     }
   };
 
-  const initiatePayment = async (booking: Booking) => {
-    const token = localStorage.getItem("token");
-    if (!token) return;
+  const handlePaymentProofUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
 
-    setPayingBooking(booking._id);
+    const reader = new FileReader();
+    reader.onload = async () => {
+      setUploadingProof(true);
+      try {
+        const token = localStorage.getItem("token");
+        const res = await fetch("/api/upload", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${token}`
+          },
+          body: JSON.stringify({ file: reader.result, folder: "payment-proofs" })
+        });
+        const data = await res.json();
+        if (data.success) {
+          setPaymentProofForm({ ...paymentProofForm, screenshot: data.url });
+        } else {
+          alert(data.error || "Failed to upload image. It might be too large.");
+        }
+      } catch (err) {
+        console.error("Upload error:", err);
+        alert("Upload failed. The image might be too large (must be under 1MB).");
+      } finally {
+        setUploadingProof(false);
+      }
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const submitPaymentProof = async () => {
+    const token = localStorage.getItem("token");
+    if (!token || !showPaymentProofModal) return;
+
+    if (!paymentProofForm.screenshot || !paymentProofForm.utr || !paymentProofForm.paidAt) {
+      alert("Please provide screenshot, UTR number, and payment date/time");
+      return;
+    }
+
+    setPayingBooking(showPaymentProofModal);
     try {
-      const orderRes = await fetch("/api/payments/create-order", {
-        method: "POST",
-        headers: { 
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`
-        },
-        body: JSON.stringify({ bookingId: booking._id, amount: booking.finalPrice })
+      const res = await fetch("/api/partner/bookings", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({
+          bookingId: showPaymentProofModal,
+          action: "submitPaymentProof",
+          screenshot: paymentProofForm.screenshot,
+          utr: paymentProofForm.utr,
+          paidAt: paymentProofForm.paidAt
+        })
       });
-      const orderData = await orderRes.json();
-      
-      if (orderData.success) {
-        const razorpayKeyRes = await fetch("/api/payments/key");
-        const keyData = await razorpayKeyRes.json();
-        
-        const options = {
-          key: keyData.key || "rzp_test_key",
-          amount: orderData.data.amount,
-          currency: "INR",
-          name: "VibeStage",
-          description: `Payment for ${booking.eventName}`,
-          order_id: orderData.data.orderId,
-          handler: async (response: any) => {
-            const verifyRes = await fetch("/api/payments/verify", {
-              method: "POST",
-              headers: { 
-                "Content-Type": "application/json",
-                Authorization: `Bearer ${token}`
-              },
-              body: JSON.stringify({
-                bookingId: booking._id,
-                razorpayPaymentId: response.razorpay_payment_id,
-                razorpayOrderId: response.razorpay_order_id
-              })
-            });
-            const verifyData = await verifyRes.json();
-            if (verifyData.success) {
-              setPaymentSuccess("Payment successful!");
-              fetchData();
-              setTimeout(() => setPaymentSuccess(""), 3000);
-            }
-          }
-        };
-        
-        const razorpay = (window as any).Razorpay && new (window as any).Razorpay(options);
-        if (razorpay) razorpay.open();
+      const data = await res.json();
+      if (data.success) {
+        setPaymentSuccess("Payment proof submitted! Awaiting admin verification.");
+        setShowPaymentProofModal(null);
+        setPaymentProofForm({ screenshot: "", utr: "", paidAt: "" });
+        fetchData();
+        setTimeout(() => setPaymentSuccess(""), 3000);
+      } else {
+        alert(data.error || "Failed to submit payment proof");
       }
     } catch (error) {
-      console.error("Payment error:", error);
+      console.error("Submit payment proof error:", error);
+      alert("Failed to submit payment proof");
     } finally {
       setPayingBooking(null);
     }
@@ -375,8 +406,8 @@ export default function PartnerDashboard() {
     a.location.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  const pendingBookings = bookings.filter(b => b.status === "pending");
-  const acceptedBookings = bookings.filter(b => b.status === "accepted" || b.status === "paid");
+  const pendingBookings = bookings.filter(b => b.status === "pending" || b.status === "awaiting_confirmation");
+  const acceptedBookings = bookings.filter(b => b.status === "accepted" || b.status === "confirmed" || b.status === "awaiting_confirmation");
   const completedBookings = bookings.filter(b => b.status === "completed");
   const cancelledBookings = bookings.filter(b => b.status === "cancelled" || b.status === "rejected");
 
@@ -784,10 +815,12 @@ export default function PartnerDashboard() {
                         <div className="flex items-center gap-3">
                           <span className={`text-xs px-2 py-1 rounded-full ${
                             booking.status === "completed" ? "bg-green-500/20 text-green-400" :
-                            booking.status === "accepted" || booking.status === "paid" ? "bg-blue-500/20 text-blue-400" :
+                            booking.status === "confirmed" ? "bg-green-500/20 text-green-400" :
+                            booking.status === "accepted" ? "bg-blue-500/20 text-blue-400" :
+                            booking.status === "awaiting_confirmation" ? "bg-purple-500/20 text-purple-400" :
                             booking.status === "cancelled" || booking.status === "rejected" ? "bg-red-500/20 text-red-400" :
                             "bg-yellow-500/20 text-yellow-400"
-                          }`}>{booking.status}</span>
+                          }`}>{booking.status === "awaiting_confirmation" ? "Verifying Payment" : booking.status}</span>
                           <p className="text-brand-orange font-semibold">₹{booking.finalPrice.toLocaleString()}</p>
                         </div>
                       </div>
@@ -810,86 +843,74 @@ export default function PartnerDashboard() {
                       <div className="flex flex-wrap gap-2">
                         {/* Pending - no actions for organizer yet */}
                         
-                        {/* Accepted - show payment options */}
-                        {booking.status === "accepted" && !booking.organizerPaidAdmin && (
-                          <>
-                            <button
-                              onClick={async () => {
-                                const token = localStorage.getItem("token");
-                                const res = await fetch("/api/partner/bookings", {
-                                  method: "PUT",
-                                  headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-                                  body: JSON.stringify({ bookingId: booking._id, action: "payAdmin", paymentType: "full" })
-                                });
-                                const data = await res.json();
-                                if (data.success) { fetchData(); setPaymentSuccess("Full payment recorded!"); setTimeout(() => setPaymentSuccess(""), 3000); }
-                              }}
-                              className="px-4 py-2 rounded-lg bg-brand-gradient text-white text-sm font-medium"
-                            >
-                              Pay Full to Admin (₹{booking.finalPrice.toLocaleString()})
-                            </button>
-                            <button
-                              onClick={async () => {
-                                const token = localStorage.getItem("token");
-                                const advanceAmt = Math.round(booking.finalPrice * 0.3);
-                                const res = await fetch("/api/partner/bookings", {
-                                  method: "PUT",
-                                  headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-                                  body: JSON.stringify({ bookingId: booking._id, action: "payAdmin", paymentType: "advance", advanceAmount: advanceAmt })
-                                });
-                                const data = await res.json();
-                                if (data.success) { fetchData(); setPaymentSuccess("30% advance payment recorded!"); setTimeout(() => setPaymentSuccess(""), 3000); }
-                              }}
-                              className="px-4 py-2 rounded-lg bg-brand-orange/20 text-brand-orange text-sm"
-                            >
-                              Pay 30% Advance to Admin (₹{Math.round(booking.finalPrice * 0.3).toLocaleString()})
-                            </button>
-                          </>
-                        )}
-
-                        {/* Advance paid - organizer pays remaining to artist */}
-                        {booking.status === "accepted" && booking.organizerPaidAdmin && booking.paymentType === "advance" && !booking.adminPaidArtist && (
-                          <>
-                            <button
-                              onClick={async () => {
-                                const token = localStorage.getItem("token");
-                                const res = await fetch("/api/partner/bookings", {
-                                  method: "PUT",
-                                  headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-                                  body: JSON.stringify({ bookingId: booking._id, action: "payArtistRemaining" })
-                                });
-                                const data = await res.json();
-                                if (data.success) { fetchData(); setPaymentSuccess("Remaining payment recorded!"); setTimeout(() => setPaymentSuccess(""), 3000); }
-                              }}
-                              className="px-4 py-2 rounded-lg bg-brand-gradient text-white text-sm font-medium"
-                            >
-                              Pay Remaining to Artist (₹{(booking.finalPrice - (booking.advanceAmount || Math.round(booking.finalPrice * 0.3))).toLocaleString()})
-                            </button>
-                          </>
-                        )}
-
-                        {/* Full paid to admin - admin will pay artist */}
-                        {booking.status === "accepted" && booking.organizerPaidAdmin && booking.paymentType === "full" && (
-                          <span className="px-4 py-2 rounded-lg bg-green-500/20 text-green-400 text-sm">Paid to Admin - Awaiting Admin to Release to Artist</span>
-                        )}
-
+                        {/* Accepted - show UPI details & payment upload */}
                         {booking.status === "accepted" && (
-                          <button
-                            onClick={() => updateBooking(booking._id, "cancel")}
-                            className="px-4 py-2 rounded-lg bg-red-500/20 text-red-400 text-sm"
-                          >
-                            Cancel
-                          </button>
+                          <>
+                            <div className="w-full mb-3 p-4 rounded-xl bg-brand-orange/10 border border-brand-orange/30">
+                              <p className="text-sm text-brand-orange font-semibold mb-2">Pay via UPI</p>
+                              <div className="flex gap-4 items-start">
+                                {platformSettings?.platformUpiQrCode && (
+                                  <div className="w-24 h-24 rounded-lg overflow-hidden border border-white/[0.08] flex-shrink-0">
+                                    <Image src={platformSettings.platformUpiQrCode} alt="UPI QR" width={96} height={96} className="w-full h-full object-cover" />
+                                  </div>
+                                )}
+                                <div>
+                                  <p className="text-white/60 text-xs">UPI ID:</p>
+                                  <p className="text-white font-mono font-medium">{platformSettings?.platformUpiId || "Not set by admin"}</p>
+                                  <p className="text-white/40 text-xs mt-2">Amount: <span className="text-white font-semibold">₹{booking.finalPrice.toLocaleString()}</span></p>
+                                </div>
+                              </div>
+                            </div>
+                            <button
+                              onClick={() => {
+                                setShowPaymentProofModal(booking._id);
+                                setPaymentProofForm({ screenshot: "", utr: "", paidAt: "" });
+                              }}
+                              className="px-4 py-2 rounded-lg bg-brand-gradient text-white text-sm font-medium"
+                            >
+                              Upload Payment Proof
+                            </button>
+                            <button
+                              onClick={() => updateBooking(booking._id, "cancel")}
+                              className="px-4 py-2 rounded-lg bg-red-500/20 text-red-400 text-sm"
+                            >
+                              Cancel
+                            </button>
+                          </>
                         )}
 
-                        {booking.status === "paid" && (
-                          <button
-                            onClick={() => updateBooking(booking._id, "complete")}
-                            className="px-4 py-2 rounded-lg bg-green-500/20 text-green-400 text-sm"
-                          >
-                            Mark Completed
-                          </button>
+                        {/* Awaiting admin verification */}
+                        {booking.status === "awaiting_confirmation" && (
+                          <>
+                            <div className="w-full p-3 rounded-lg bg-yellow-500/10 border border-yellow-500/30 text-sm">
+                              <p className="text-yellow-400 font-medium">Payment Under Verification</p>
+                              <p className="text-white/60 text-xs mt-1">Your payment proof has been submitted. Admin will verify and confirm shortly.</p>
+                              {booking.paymentProof?.screenshot && (
+                                <div className="mt-2">
+                                  <p className="text-white/40 text-xs">UTR: {booking.paymentProof.utr}</p>
+                                  <p className="text-white/40 text-xs">Paid on: {new Date(booking.paymentProof.paidAt).toLocaleString()}</p>
+                                </div>
+                              )}
+                            </div>
+                          </>
                         )}
+
+                        {/* Confirmed */}
+                        {booking.status === "confirmed" && (
+                          <>
+                            <div className="w-full p-3 rounded-lg bg-green-500/10 border border-green-500/30 text-sm">
+                              <p className="text-green-400 font-medium">Booking Confirmed ✓</p>
+                              <p className="text-white/60 text-xs mt-1">Payment verified by admin.</p>
+                            </div>
+                            <button
+                              onClick={() => updateBooking(booking._id, "complete")}
+                              className="px-4 py-2 rounded-lg bg-green-500/20 text-green-400 text-sm"
+                            >
+                              Mark Completed
+                            </button>
+                          </>
+                        )}
+
                         {booking.status === "completed" && (
                           <button
                             onClick={() => setShowReviewModal(booking._id)}
@@ -1058,6 +1079,83 @@ export default function PartnerDashboard() {
                   className="flex-1 px-4 py-2 rounded-xl bg-brand-gradient text-white font-medium"
                 >
                   Submit Review
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Payment Proof Modal */}
+      {showPaymentProofModal && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="glass-card max-w-md w-full p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-xl font-bold text-white">Upload Payment Proof</h3>
+              <button onClick={() => setShowPaymentProofModal(null)} className="text-white/40"><X className="w-5 h-5" /></button>
+            </div>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm text-white/40 mb-2">Payment Screenshot</label>
+                {paymentProofForm.screenshot ? (
+                  <div className="relative w-full h-48 rounded-xl overflow-hidden border border-white/[0.08] mb-2">
+                    <Image src={paymentProofForm.screenshot} alt="Payment Screenshot" fill className="object-contain" />
+                    <button
+                      onClick={() => setPaymentProofForm({ ...paymentProofForm, screenshot: "" })}
+                      className="absolute top-2 right-2 p-1 rounded-full bg-red-500/80 text-white"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+                ) : (
+                  <div
+                    onClick={() => proofFileRef.current?.click()}
+                    className="flex flex-col items-center justify-center w-full h-40 rounded-xl border border-dashed border-white/20 text-white/50 hover:text-white hover:border-brand-orange/50 cursor-pointer transition-colors"
+                  >
+                    <Upload className="w-8 h-8 mb-2" />
+                    <span className="text-sm">{uploadingProof ? "Uploading..." : "Click to upload screenshot"}</span>
+                  </div>
+                )}
+                <input
+                  ref={proofFileRef}
+                  type="file"
+                  accept="image/*"
+                  onChange={handlePaymentProofUpload}
+                  className="hidden"
+                />
+              </div>
+              <div>
+                <label className="block text-sm text-white/40 mb-1.5">UTR Number *</label>
+                <input
+                  type="text"
+                  value={paymentProofForm.utr}
+                  onChange={(e) => setPaymentProofForm({ ...paymentProofForm, utr: e.target.value })}
+                  placeholder="e.g. HDFC123456789"
+                  className="w-full px-4 py-3 rounded-xl bg-white/[0.04] border border-white/[0.08] text-white"
+                />
+              </div>
+              <div>
+                <label className="block text-sm text-white/40 mb-1.5">Payment Date & Time *</label>
+                <input
+                  type="datetime-local"
+                  value={paymentProofForm.paidAt}
+                  onChange={(e) => setPaymentProofForm({ ...paymentProofForm, paidAt: e.target.value })}
+                  className="w-full px-4 py-3 rounded-xl bg-white/[0.04] border border-white/[0.08] text-white"
+                />
+              </div>
+              <div className="flex gap-3 pt-2">
+                <button
+                  onClick={() => { setShowPaymentProofModal(null); setPaymentProofForm({ screenshot: "", utr: "", paidAt: "" }); }}
+                  className="flex-1 px-4 py-2 rounded-xl bg-white/[0.04] text-white/60 hover:text-white"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={submitPaymentProof}
+                  disabled={payingBooking === showPaymentProofModal}
+                  className="flex-1 px-4 py-2 rounded-xl bg-brand-gradient text-white font-medium disabled:opacity-50"
+                >
+                  {payingBooking === showPaymentProofModal ? "Submitting..." : "Submit Proof"}
                 </button>
               </div>
             </div>

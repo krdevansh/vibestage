@@ -28,9 +28,6 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" className="dark">
-      <head>
-        <script src="https://checkout.razorpay.com/v1/checkout.js" async></script>
-      </head>
       <body className="min-h-screen bg-brand-bg">
         {children}
       </body>

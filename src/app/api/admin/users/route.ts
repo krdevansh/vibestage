@@ -100,6 +100,28 @@ export async function PUT(request: NextRequest) {
       return NextResponse.json({ success: true, message: "User unblocked" });
     }
 
+    if (action === "deleteProfileImage") {
+      if (type === "artist") {
+        const artist = await Artist.findById(userId);
+        if (!artist) {
+          return NextResponse.json({ success: false, error: "Artist not found" }, { status: 404 });
+        }
+        artist.image = "";
+        await artist.save();
+        return NextResponse.json({ success: true, message: "Artist profile image deleted" });
+      }
+      if (type === "partner") {
+        const partner = await User.findById(userId);
+        if (!partner) {
+          return NextResponse.json({ success: false, error: "Partner not found" }, { status: 404 });
+        }
+        partner.profileImage = "";
+        await partner.save();
+        return NextResponse.json({ success: true, message: "Partner profile image deleted" });
+      }
+      return NextResponse.json({ success: false, error: "Invalid type" }, { status: 400 });
+    }
+
     return NextResponse.json({ success: false, error: "Invalid action" }, { status: 400 });
   } catch (error) {
     console.error("Admin users PUT error:", error);

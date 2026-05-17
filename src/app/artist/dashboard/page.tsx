@@ -323,8 +323,9 @@ export default function ArtistDashboard() {
 
   const [selectedAcceptData, setSelectedAcceptData] = useState<{ [bookingId: string]: { date: string; venue: string } }>({});
 
+  const upcomingBookings = bookings.filter(b => b.status === "confirmed" || b.status === "accepted");
   const pendingBookings = bookings.filter(b => b.status === "pending");
-  const completedBookings = bookings.filter(b => b.status === "completed" || b.status === "paid");
+  const completedBookings = bookings.filter(b => b.status === "completed" || b.status === "paid" || b.status === "confirmed");
 
   if (loading) {
     return (
@@ -431,7 +432,7 @@ export default function ArtistDashboard() {
               </div>
               <div className="glass-card p-5">
                 <p className="text-white/40 text-sm mb-1">Upcoming Events</p>
-                <p className="text-2xl font-bold gradient-text">{pendingBookings.length}</p>
+                <p className="text-2xl font-bold gradient-text">{upcomingBookings.length}</p>
               </div>
               <div className="glass-card p-5">
                 <p className="text-white/40 text-sm mb-1">Total Earnings</p>
@@ -445,9 +446,9 @@ export default function ArtistDashboard() {
 
             <div className="glass-card p-6">
               <h3 className="text-lg font-semibold text-white mb-4">Upcoming Bookings</h3>
-              {pendingBookings.length > 0 ? (
+              {upcomingBookings.length > 0 ? (
                 <div className="space-y-3">
-                  {pendingBookings.slice(0, 3).map((booking) => (
+                  {upcomingBookings.slice(0, 3).map((booking) => (
                     <div key={booking._id} className="flex items-center justify-between p-4 rounded-xl bg-white/[0.04]">
                       <div>
                         <p className="text-white font-medium">{booking.eventName}</p>
@@ -832,11 +833,12 @@ export default function ArtistDashboard() {
                     <div className="text-right">
                       <p className="text-brand-orange font-semibold">₹{booking.finalPrice.toLocaleString()}</p>
                       <span className={`text-xs px-2 py-0.5 rounded-full ${
-                        booking.status === "completed" ? "bg-green-500/20 text-green-400" :
+                        booking.status === "completed" || booking.status === "confirmed" ? "bg-green-500/20 text-green-400" :
                         booking.status === "accepted" ? "bg-blue-500/20 text-blue-400" :
+                        booking.status === "awaiting_confirmation" ? "bg-purple-500/20 text-purple-400" :
                         booking.status === "rejected" || booking.status === "cancelled" ? "bg-red-500/20 text-red-400" :
                         "bg-yellow-500/20 text-yellow-400"
-                      }`}>{booking.status}</span>
+                      }`}>{booking.status === "awaiting_confirmation" ? "Verifying Payment" : booking.status}</span>
                     </div>
                   </div>
                 ))}

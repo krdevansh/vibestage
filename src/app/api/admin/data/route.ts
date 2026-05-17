@@ -34,7 +34,7 @@ export async function GET(req: NextRequest) {
       const totalPartners = await User.countDocuments({ role: "event_partner" });
       const totalBookings = await Booking.countDocuments();
       
-      const completedBookings = await Booking.find({ status: "completed" });
+      const completedBookings = await Booking.find({ status: { $in: ["completed", "confirmed"] } });
       const totalRevenue = completedBookings.reduce((sum, b) => sum + (b.budget || 0), 0);
       const commission = totalRevenue * 0.3;
 

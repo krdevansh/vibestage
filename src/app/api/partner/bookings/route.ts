@@ -120,7 +120,7 @@ export async function GET(request: NextRequest) {
 
     const bookings = await Booking.find(query)
       .sort({ createdAt: -1 })
-      .populate("artistId", "name genre image location");
+      .populate("artistId", "name genre image location upiId upiQrCode");
 
     return NextResponse.json({ success: true, data: bookings });
   } catch (error) {
@@ -189,6 +189,35 @@ export async function PUT(request: NextRequest) {
         updateFields.adminPaidArtist = true;
         updateFields.paymentStatus = "paid";
         updateFields.status = "paid";
+      }
+      if (action === "submitPaymentProof") {
+        if (user.role !== "event_partner") {
+          return NextResponse.json({ success: false, error: "Only organizers can submit payment proof" }, { status: 403 });
+        }
+        const { screenshot, utr, paidAt } = body;
+        if (!screenshot || !utr || !paidAt) {
+          return NextResponse.json({ success: false, error: "Missing payment proof details (screenshot, utr, paidAt)" }, { status: 400 });
+        }
+        updateFields.status = "awaiting_confirmation";
+        updateFields.paymentStatus = "pending_verification";
+        updateFields["paymentProof.screenshot"] = screenshot;
+        updateFields["paymentProof.utr"] = utr;
+        updateFields["paymentProof.paidAt"] = new Date(paidAt);
+      }
+      if (action === "adminConfirmPayment") {
+        if (user.role !== "admin") {
+          return NextResponse.json({ success: false, error: "Only admin can confirm payment" }, { status: 403 });
+        }
+        updateFields.status = "confirmed";
+        updateFields.paymentStatus = "paid";
+        updateFields.organizerPaidAdmin = true;
+      }
+      if (action === "adminRejectPayment") {
+        if (user.role !== "admin") {
+          return NextResponse.json({ success: false, error: "Only admin can reject payment" }, { status: 403 });
+        }
+        updateFields.status = "rejected";
+        updateFields.paymentStatus = "unpaid";
       }
     }
     
@@ -271,6 +300,59 @@ export async function PUT(request: NextRequest) {
       await notifyAdmins(
         "Payment Released to Artist",
         `₹${booking.artistPayout} released to ${booking.artistName} for "${booking.eventName}"`
+      );
+    }
+
+    if (action === "submitPaymentProof") {
+      await Notification.create({
+        userId: booking.artistUserId,
+        type: "payment",
+        title: "Payment Proof Submitted",
+        message: `${booking.organizerName} has submitted payment proof for "${booking.eventName}"`,
+        bookingId: booking._id
+      });
+
+      await notifyAdmins(
+        "Payment Proof Submitted",
+        `${booking.organizerName} submitted payment proof (UTR: ${body.utr}) for "${booking.eventName}". Verify and confirm.`
+      );
+    }
+
+    if (action === "adminConfirmPayment") {
+      await Notification.create({
+        userId: booking.artistUserId,
+        type: "booking_accepted",
+        title: "Booking Confirmed",
+        message: `Payment verified! Booking "${booking.eventName}" is confirmed.`,
+        bookingId: booking._id
+      });
+
+      await Notification.create({
+        userId: booking.organizerId,
+        type: "booking_accepted",
+        title: "Booking Confirmed",
+        message: `Your payment has been verified! Booking "${booking.eventName}" is confirmed.`,
+        bookingId: booking._id
+      });
+
+      await notifyAdmins(
+        "Booking Confirmed",
+        `Payment for "${booking.eventName}" by ${booking.artistName} has been confirmed.`
+      );
+    }
+
+    if (action === "adminRejectPayment") {
+      await Notification.create({
+        userId: booking.organizerId,
+        type: "booking_rejected",
+        title: "Payment Rejected",
+        message: `Your payment proof for "${booking.eventName}" has been rejected. Please contact admin.`,
+        bookingId: booking._id
+      });
+
+      await notifyAdmins(
+        "Payment Rejected",
+        `Payment for "${booking.eventName}" by ${booking.organizerName} has been rejected.`
       );
     }
 

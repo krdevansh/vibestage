@@ -1,10 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
-import { Users, Mic2, Calendar, DollarSign, LogOut, Eye, Trash2, ChevronLeft, CreditCard, CheckCircle, XCircle, Bell, Check, X, AlertTriangle } from "lucide-react";
+import { Users, Mic2, Calendar, DollarSign, LogOut, Eye, Trash2, ChevronLeft, CreditCard, CheckCircle, XCircle, Bell, Check, X, AlertTriangle, Upload } from "lucide-react";
 
 interface User {
   id: string;
@@ -68,6 +68,11 @@ interface Booking {
   artistUserId: string;
   artistPayout: number;
   createdAt: string;
+  paymentProof: {
+    screenshot: string;
+    utr: string;
+    paidAt: string;
+  };
 }
 
 interface ProfileData {
@@ -93,7 +98,7 @@ interface AdminNotification {
   bookingId?: string;
 }
 
-type Tab = "analytics" | "artists" | "partners" | "bookings" | "payouts" | "notifications";
+type Tab = "analytics" | "artists" | "partners" | "bookings" | "payouts" | "notifications" | "settings";
 
 export default function AdminDashboard() {
   const router = useRouter();
@@ -112,6 +117,11 @@ export default function AdminDashboard() {
   const [profileLoading, setProfileLoading] = useState(false);
   const [adminNotifications, setAdminNotifications] = useState<AdminNotification[]>([]);
   const [adminUnreadCount, setAdminUnreadCount] = useState(0);
+  const [settings, setSettings] = useState({ platformUpiId: "", platformUpiQrCode: "" });
+  const [settingsForm, setSettingsForm] = useState({ platformUpiId: "", platformUpiQrCode: "" });
+  const [savingSettings, setSavingSettings] = useState(false);
+  const [settingsMsg, setSettingsMsg] = useState("");
+  const settingsQrRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     const checkAuth = () => {
@@ -183,6 +193,13 @@ export default function AdminDashboard() {
         if (data.success) setPayoutSummary(data.data);
       } else if (activeTab === "notifications") {
         await fetchNotifications();
+      } else if (activeTab === "settings") {
+        const res = await fetch("/api/admin/settings");
+        const data = await res.json();
+        if (data.success) {
+          setSettings(data.data);
+          setSettingsForm({ platformUpiId: data.data.platformUpiId || "", platformUpiQrCode: data.data.platformUpiQrCode || "" });
+        }
       }
     } catch (error) {
       console.error("Fetch error:", error);
@@ -245,6 +262,7 @@ export default function AdminDashboard() {
     { id: "bookings", label: "Bookings", icon: Calendar },
     { id: "payouts", label: "Payouts", icon: CreditCard },
     { id: "notifications", label: "Notifications", icon: Bell },
+    { id: "settings", label: "Payment Settings", icon: CreditCard },
   ];
 
   return (
@@ -443,6 +461,25 @@ export default function AdminDashboard() {
                                   <CheckCircle className="w-4 h-4" />
                                 </button>
                               )}
+                              {artist.image && (
+                                <button
+                                  onClick={async () => {
+                                    const token = localStorage.getItem("token");
+                                    if (!confirm("Delete this artist's profile picture?")) return;
+                                    const res = await fetch("/api/admin/users", {
+                                      method: "PUT",
+                                      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+                                      body: JSON.stringify({ userId: artist._id, action: "deleteProfileImage", type: "artist" })
+                                    });
+                                    const data = await res.json();
+                                    if (data.success) fetchData();
+                                  }}
+                                  className="p-2 rounded-lg bg-red-500/10 text-red-400 hover:bg-red-500/30"
+                                  title="Delete Profile Picture"
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </button>
+                              )}
                               <button
                                 onClick={() => handleViewProfile(artist._id, "artist")}
                                 className="p-2 rounded-lg bg-white/[0.04] hover:bg-white/[0.08] text-white/50 hover:text-white"
@@ -503,6 +540,25 @@ export default function AdminDashboard() {
                           </td>
                           <td className="py-4 px-4">
                             <div className="flex items-center gap-2">
+                              {(partner as any).profileImage && (
+                                <button
+                                  onClick={async () => {
+                                    const token = localStorage.getItem("token");
+                                    if (!confirm("Delete this partner's profile picture?")) return;
+                                    const res = await fetch("/api/admin/users", {
+                                      method: "PUT",
+                                      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+                                      body: JSON.stringify({ userId: partner._id, action: "deleteProfileImage", type: "partner" })
+                                    });
+                                    const data = await res.json();
+                                    if (data.success) fetchData();
+                                  }}
+                                  className="p-2 rounded-lg bg-red-500/10 text-red-400 hover:bg-red-500/30"
+                                  title="Delete Profile Picture"
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </button>
+                              )}
                               <button
                                 onClick={() => handleViewProfile(partner._id, "partner")}
                                 className="p-2 rounded-lg bg-white/[0.04] hover:bg-white/[0.08] text-white/50 hover:text-white"
@@ -579,11 +635,14 @@ export default function AdminDashboard() {
                           <td className="py-4 px-4">
                             <span className={`px-2 py-1 rounded-full text-xs ${
                               booking.status === "completed" ? "bg-green-500/20 text-green-400" :
+                              booking.status === "confirmed" ? "bg-green-500/20 text-green-400" :
                               booking.status === "accepted" ? "bg-blue-500/20 text-blue-400" :
+                              booking.status === "awaiting_confirmation" ? "bg-purple-500/20 text-purple-400" :
                               booking.status === "pending" ? "bg-yellow-500/20 text-yellow-400" :
                               "bg-red-500/20 text-red-400"
                             }`}>
-                              {booking.status}
+                              {booking.status === "awaiting_confirmation" ? "Verify Payment" :
+                               booking.status === "confirmed" ? "Confirmed" : booking.status}
                             </span>
                           </td>
                           <td className="py-4 px-4">
@@ -597,11 +656,62 @@ export default function AdminDashboard() {
                               {!booking.organizerPaidAdmin && booking.status === "accepted" && (
                                 <span className="text-orange-400">Awaiting Org Payment</span>
                               )}
+                              {booking.status === "awaiting_confirmation" && (
+                                <span className="text-purple-400">Proof Submitted</span>
+                              )}
                             </div>
                           </td>
                           <td className="py-4 px-4">
                             <div className="flex items-center gap-2">
-                              {/* Admin Pays Artist button */}
+                              {/* Payment Verification - Approve/Reject */}
+                              {booking.status === "awaiting_confirmation" && (
+                                <>
+                                  {booking.paymentProof?.screenshot && (
+                                    <button
+                                      onClick={() => window.open(booking.paymentProof.screenshot, "_blank")}
+                                      className="px-2 py-1.5 rounded-lg bg-white/[0.06] text-white/60 hover:text-white text-xs"
+                                      title="View payment proof"
+                                    >
+                                      <Eye className="w-3.5 h-3.5" />
+                                    </button>
+                                  )}
+                                  <button
+                                    onClick={async () => {
+                                      const token = localStorage.getItem("token");
+                                      if (!confirm("Confirm payment and approve booking?")) return;
+                                      const res = await fetch("/api/partner/bookings", {
+                                        method: "PUT",
+                                        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+                                        body: JSON.stringify({ bookingId: booking._id, action: "adminConfirmPayment" })
+                                      });
+                                      const data = await res.json();
+                                      if (data.success) fetchData();
+                                    }}
+                                    className="px-3 py-1.5 rounded-lg bg-green-500/20 text-green-400 hover:bg-green-500/30 text-xs font-medium"
+                                    title="Approve payment"
+                                  >
+                                    <CheckCircle className="w-3.5 h-3.5 inline mr-1" /> Approve
+                                  </button>
+                                  <button
+                                    onClick={async () => {
+                                      const token = localStorage.getItem("token");
+                                      if (!confirm("Reject this payment proof?")) return;
+                                      const res = await fetch("/api/partner/bookings", {
+                                        method: "PUT",
+                                        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+                                        body: JSON.stringify({ bookingId: booking._id, action: "adminRejectPayment" })
+                                      });
+                                      const data = await res.json();
+                                      if (data.success) fetchData();
+                                    }}
+                                    className="px-3 py-1.5 rounded-lg bg-red-500/20 text-red-400 hover:bg-red-500/30 text-xs font-medium"
+                                    title="Reject payment"
+                                  >
+                                    <XCircle className="w-3.5 h-3.5 inline mr-1" /> Reject
+                                  </button>
+                                </>
+                              )}
+                              {/* Admin Pays Artist button (for old flow) */}
                               {booking.organizerPaidAdmin && !booking.adminPaidArtist && booking.status === "accepted" && (
                                 <button
                                   onClick={async () => {
@@ -724,6 +834,129 @@ export default function AdminDashboard() {
               ) : (
                 <div className="text-center py-20 text-white/50">No payout data</div>
               )}
+            </div>
+          )}
+
+          {/* Payment Settings Tab */}
+          {activeTab === "settings" && (
+            <div className="max-w-2xl">
+              <h2 className="text-2xl font-display font-bold text-white mb-6">Payment Settings</h2>
+
+              {settingsMsg && (
+                <div className={`mb-6 p-4 rounded-xl ${settingsMsg.includes("Error") ? "bg-red-500/10 text-red-400" : "bg-green-500/10 text-green-400"}`}>
+                  {settingsMsg}
+                </div>
+              )}
+
+              <div className="space-y-6">
+                <div className="glass-card p-6">
+                  <h3 className="text-lg font-semibold text-white mb-4">Platform UPI QR Code</h3>
+                  <p className="text-sm text-white/40 mb-4">
+                    This QR code and UPI ID will be shown to organizers when they need to make payments for bookings.
+                  </p>
+
+                  {settingsForm.platformUpiQrCode ? (
+                    <div className="relative w-48 h-48 rounded-xl overflow-hidden border border-white/[0.08] mb-4">
+                      <Image src={settingsForm.platformUpiQrCode} alt="Platform UPI QR" fill className="object-contain" />
+                      <button
+                        onClick={() => setSettingsForm({ ...settingsForm, platformUpiQrCode: "" })}
+                        className="absolute top-2 right-2 p-1 rounded-full bg-red-500/80 text-white"
+                        title="Remove QR code"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    </div>
+                  ) : (
+                    <div
+                      onClick={() => settingsQrRef.current?.click()}
+                      className="flex flex-col items-center justify-center w-48 h-48 rounded-xl border border-dashed border-white/20 text-white/50 hover:text-white hover:border-brand-orange/50 cursor-pointer transition-colors mb-4"
+                    >
+                      <Upload className="w-8 h-8 mb-2" />
+                      <span className="text-sm">Upload QR Code</span>
+                    </div>
+                  )}
+                  <input
+                    ref={settingsQrRef}
+                    type="file"
+                    accept="image/*"
+                    onChange={async (e) => {
+                      const file = e.target.files?.[0];
+                      if (!file) return;
+                      const reader = new FileReader();
+                      reader.onload = async () => {
+                        try {
+                          const token = localStorage.getItem("token");
+                          const res = await fetch("/api/upload", {
+                            method: "POST",
+                            headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+                            body: JSON.stringify({ file: reader.result, folder: "settings" })
+                          });
+                          const data = await res.json();
+                          if (data.success) {
+                            setSettingsForm({ ...settingsForm, platformUpiQrCode: data.url });
+                          } else {
+                            alert(data.error || "Upload failed");
+                          }
+                        } catch (err) {
+                          console.error("Upload error:", err);
+                        }
+                      };
+                      reader.readAsDataURL(file);
+                    }}
+                    className="hidden"
+                  />
+                </div>
+
+                <div className="glass-card p-6">
+                  <h3 className="text-lg font-semibold text-white mb-4">Platform UPI ID</h3>
+                  <div>
+                    <label className="block text-sm text-white/40 mb-1.5">UPI ID</label>
+                    <input
+                      type="text"
+                      value={settingsForm.platformUpiId}
+                      onChange={(e) => setSettingsForm({ ...settingsForm, platformUpiId: e.target.value })}
+                      placeholder="e.g. vibestage@upi"
+                      className="w-full px-4 py-3 rounded-xl bg-white/[0.04] border border-white/[0.08] text-white"
+                    />
+                    <p className="text-xs text-white/30 mt-2">
+                      Organizers will see this UPI ID and QR code when making payments for bookings.
+                    </p>
+                  </div>
+                </div>
+
+                <button
+                  onClick={async () => {
+                    const token = localStorage.getItem("token");
+                    if (!token) return;
+                    setSavingSettings(true);
+                    setSettingsMsg("");
+                    try {
+                      const res = await fetch("/api/admin/settings", {
+                        method: "PUT",
+                        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+                        body: JSON.stringify(settingsForm)
+                      });
+                      const data = await res.json();
+                      if (data.success) {
+                        setSettings(data.data);
+                        setSettingsMsg("Payment settings updated successfully!");
+                        setTimeout(() => setSettingsMsg(""), 3000);
+                      } else {
+                        setSettingsMsg("Error: " + (data.error || "Failed to update"));
+                      }
+                    } catch (err) {
+                      console.error("Save settings error:", err);
+                      setSettingsMsg("Error: Failed to save settings");
+                    } finally {
+                      setSavingSettings(false);
+                    }
+                  }}
+                  disabled={savingSettings}
+                  className="btn-primary w-full"
+                >
+                  {savingSettings ? "Saving..." : "Save Payment Settings"}
+                </button>
+              </div>
             </div>
           )}
 
