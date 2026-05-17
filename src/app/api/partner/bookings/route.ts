@@ -188,21 +188,26 @@ export async function PUT(request: NextRequest) {
         }
         updateFields.adminPaidArtist = true;
         updateFields.paymentStatus = "paid";
-        updateFields.status = "paid";
       }
       if (action === "submitPaymentProof") {
         if (user.role !== "event_partner") {
           return NextResponse.json({ success: false, error: "Only organizers can submit payment proof" }, { status: 403 });
         }
-        const { screenshot, utr, paidAt } = body;
+        const { screenshot, utr, paidAt, paymentType, advanceAmount } = body;
         if (!screenshot || !utr || !paidAt) {
           return NextResponse.json({ success: false, error: "Missing payment proof details (screenshot, utr, paidAt)" }, { status: 400 });
         }
         updateFields.status = "awaiting_confirmation";
         updateFields.paymentStatus = "pending_verification";
+        updateFields.paymentType = paymentType === "advance" ? "advance" : "full";
         updateFields["paymentProof.screenshot"] = screenshot;
         updateFields["paymentProof.utr"] = utr;
         updateFields["paymentProof.paidAt"] = new Date(paidAt);
+        if (paymentType === "advance") {
+          const amt = Math.round(advanceAmount || 0);
+          if (amt > 0) updateFields.advanceAmount = amt;
+          updateFields.advancePaid = true;
+        }
       }
       if (action === "adminConfirmPayment") {
         if (user.role !== "admin") {
@@ -304,26 +309,20 @@ export async function PUT(request: NextRequest) {
     }
 
     if (action === "submitPaymentProof") {
-      await Notification.create({
-        userId: booking.artistUserId,
-        type: "payment",
-        title: "Payment Proof Submitted",
-        message: `${booking.organizerName} has submitted payment proof for "${booking.eventName}"`,
-        bookingId: booking._id
-      });
-
+      const payType = booking.paymentType === "advance" ? "30% advance" : "full";
       await notifyAdmins(
         "Payment Proof Submitted",
-        `${booking.organizerName} submitted payment proof (UTR: ${body.utr}) for "${booking.eventName}". Verify and confirm.`
+        `${booking.organizerName} submitted ${payType} payment proof (UTR: ${body.utr}) for "${booking.eventName}". Verify and confirm.`
       );
     }
 
     if (action === "adminConfirmPayment") {
+      const payDesc = booking.paymentType === "advance" ? "30% advance payment" : "full payment";
       await Notification.create({
         userId: booking.artistUserId,
         type: "booking_accepted",
         title: "Booking Confirmed",
-        message: `Payment verified! Booking "${booking.eventName}" is confirmed.`,
+        message: `${payDesc} verified! Booking "${booking.eventName}" is confirmed.`,
         bookingId: booking._id
       });
 
@@ -331,13 +330,13 @@ export async function PUT(request: NextRequest) {
         userId: booking.organizerId,
         type: "booking_accepted",
         title: "Booking Confirmed",
-        message: `Your payment has been verified! Booking "${booking.eventName}" is confirmed.`,
+        message: `Your ${payDesc} has been verified! Booking "${booking.eventName}" is confirmed.`,
         bookingId: booking._id
       });
 
       await notifyAdmins(
         "Booking Confirmed",
-        `Payment for "${booking.eventName}" by ${booking.artistName} has been confirmed.`
+        `${payDesc} for "${booking.eventName}" by ${booking.artistName} has been confirmed.`
       );
     }
 

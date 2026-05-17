@@ -647,6 +647,9 @@ export default function AdminDashboard() {
                           </td>
                           <td className="py-4 px-4">
                             <div className="flex flex-col gap-1 text-xs">
+                              {booking.paymentType && (booking.status === "awaiting_confirmation" || booking.status === "confirmed") && (
+                                <span className="text-brand-orange">{booking.paymentType === "advance" ? "30% Advance" : "Full Payment"}</span>
+                              )}
                               {booking.organizerPaidAdmin && (
                                 <span className="text-green-400">Org Paid Admin ✓</span>
                               )}
@@ -711,6 +714,42 @@ export default function AdminDashboard() {
                                   </button>
                                 </>
                               )}
+
+                              {/* Confirmed Full Payment - Pay Artist button */}
+                              {booking.status === "confirmed" && booking.paymentType === "full" && !booking.adminPaidArtist && (
+                                <button
+                                  onClick={async () => {
+                                    const token = localStorage.getItem("token");
+                                    if (!confirm(`Release ₹${(booking.artistPayout || booking.basePrice || 0).toLocaleString()} to artist?`)) return;
+                                    const res = await fetch("/api/partner/bookings", {
+                                      method: "PUT",
+                                      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+                                      body: JSON.stringify({ bookingId: booking._id, action: "adminPaysArtist" })
+                                    });
+                                    const data = await res.json();
+                                    if (data.success) fetchData();
+                                  }}
+                                  className="px-3 py-1.5 rounded-lg bg-green-500/20 text-green-400 hover:bg-green-500/30 text-xs font-medium"
+                                  title="Release payment to artist"
+                                >
+                                  Pay Artist
+                                </button>
+                              )}
+
+                              {/* Confirmed Full Payment - Done */}
+                              {booking.status === "confirmed" && booking.paymentType === "full" && booking.adminPaidArtist && (
+                                <span className="px-2 py-1.5 rounded-lg bg-green-500/10 text-green-400 text-xs">
+                                  Payment done. Check your bank.
+                                </span>
+                              )}
+
+                              {/* Confirmed Advance Payment - Ask rest */}
+                              {booking.status === "confirmed" && booking.paymentType === "advance" && (
+                                <span className="px-2 py-1.5 rounded-lg bg-brand-orange/10 text-brand-orange text-xs max-w-[200px]">
+                                  Advance received. Ask rest ₹{((booking.finalPrice || 0) - (booking.advanceAmount || Math.round((booking.finalPrice || 0) * 0.3))).toLocaleString()} from organizer before show.
+                                </span>
+                              )}
+
                               {/* Admin Pays Artist button (for old flow) */}
                               {booking.organizerPaidAdmin && !booking.adminPaidArtist && booking.status === "accepted" && (
                                 <button

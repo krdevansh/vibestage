@@ -893,7 +893,25 @@ export default function ArtistDashboard() {
         {/* Notifications Tab */}
         {activeTab === "notifications" && (
           <div className="max-w-3xl">
-            <h2 className="text-2xl font-display font-bold text-white mb-6">Notifications</h2>
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-2xl font-display font-bold text-white">Notifications</h2>
+              {unreadCount > 0 && (
+                <button
+                  onClick={async () => {
+                    const token = localStorage.getItem("token");
+                    await fetch("/api/artist/notifications", {
+                      method: "PUT",
+                      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+                      body: JSON.stringify({ markAllRead: true })
+                    });
+                    fetchArtistData();
+                  }}
+                  className="px-4 py-2 rounded-lg bg-white/[0.04] text-white/60 hover:text-white text-sm"
+                >
+                  Mark All Read
+                </button>
+              )}
+            </div>
             {notifications.length > 0 ? (
               <div className="space-y-3">
                 {notifications.map((notif) => (
