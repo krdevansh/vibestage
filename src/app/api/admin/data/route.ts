@@ -17,7 +17,7 @@ export async function GET(req: NextRequest) {
     }
 
     if (type === "partners") {
-      const partners = await User.find({ role: "event_partner" }).select("-password").sort({ createdAt: -1 });
+      const partners = await User.find({ role: "event_partner", isDeleted: { $ne: true } }).select("-password").sort({ createdAt: -1 });
       return NextResponse.json({ success: true, data: partners });
     }
 
@@ -31,7 +31,7 @@ export async function GET(req: NextRequest) {
 
     if (type === "analytics") {
       const totalArtists = await Artist.countDocuments();
-      const totalPartners = await User.countDocuments({ role: "event_partner" });
+      const totalPartners = await User.countDocuments({ role: "event_partner", isDeleted: { $ne: true } });
       const totalBookings = await Booking.countDocuments();
       
       const completedBookings = await Booking.find({ status: { $in: ["completed", "confirmed"] } });

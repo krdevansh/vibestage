@@ -26,18 +26,27 @@ export async function PUT(request: NextRequest) {
 
     await connectDB();
     const body = await request.json();
-    const { userId, action } = body;
+    const { userId, email, action } = body;
 
-    if (!userId || !action) {
-      return NextResponse.json({ success: false, error: "Missing userId or action" }, { status: 400 });
+    if (!action) {
+      return NextResponse.json({ success: false, error: "Missing action" }, { status: 400 });
+    }
+
+    // Find user by userId or email
+    let userToDelete;
+    if (userId) {
+      userToDelete = await User.findById(userId);
+    } else if (email) {
+      userToDelete = await User.findOne({ email });
+    } else {
+      return NextResponse.json({ success: false, error: "Missing userId or email" }, { status: 400 });
+    }
+
+    if (!userToDelete) {
+      return NextResponse.json({ success: false, error: "User not found" }, { status: 404 });
     }
 
     if (action === "approve") {
-      const userToDelete = await User.findById(userId);
-      if (!userToDelete) {
-        return NextResponse.json({ success: false, error: "User not found" }, { status: 404 });
-      }
-
       userToDelete.isDeleted = true;
       await userToDelete.save();
 
@@ -57,7 +66,7 @@ export async function PUT(request: NextRequest) {
 
     if (action === "reject") {
       await Notification.create({
-        userId,
+        userId: userToDelete._id,
         type: "general",
         title: "Deletion Request Rejected",
         message: "Your account deletion request has been rejected by admin.",

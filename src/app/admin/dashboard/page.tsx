@@ -1061,25 +1061,18 @@ export default function AdminDashboard() {
                               e.stopPropagation();
                               const token = localStorage.getItem("token");
                               const email = notif.message.match(/\(([^)]+)\)/)?.[1];
-                              if (!email) return;
-                              const res = await fetch("/api/admin/users?action=all", {
-                                headers: { Authorization: `Bearer ${token}` }
+                              if (!email) { alert("Could not extract email from notification"); return; }
+                              const res = await fetch("/api/admin/delete-user", {
+                                method: "PUT",
+                                headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+                                body: JSON.stringify({ email, action: "approve" })
                               });
                               const data = await res.json();
                               if (data.success) {
-                                const targetUser = data.data.find((u: any) => u.email === email);
-                                if (targetUser) {
-                                  const deleteRes = await fetch("/api/admin/delete-user", {
-                                    method: "PUT",
-                                    headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-                                    body: JSON.stringify({ userId: targetUser._id, action: "approve" })
-                                  });
-                                  const deleteData = await deleteRes.json();
-                                  if (deleteData.success) {
-                                    fetchNotifications();
-                                    fetchData();
-                                  }
-                                }
+                                fetchNotifications();
+                                fetchData();
+                              } else {
+                                alert(data.error || "Failed to approve deletion");
                               }
                             }}
                             className="px-3 py-1.5 rounded-lg bg-green-500/20 text-green-400 hover:bg-green-500/30 text-xs font-medium"
@@ -1091,21 +1084,17 @@ export default function AdminDashboard() {
                               e.stopPropagation();
                               const token = localStorage.getItem("token");
                               const email = notif.message.match(/\(([^)]+)\)/)?.[1];
-                              if (!email) return;
-                              const res = await fetch("/api/admin/users?action=all", {
-                                headers: { Authorization: `Bearer ${token}` }
+                              if (!email) { alert("Could not extract email from notification"); return; }
+                              const res = await fetch("/api/admin/delete-user", {
+                                method: "PUT",
+                                headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+                                body: JSON.stringify({ email, action: "reject" })
                               });
                               const data = await res.json();
                               if (data.success) {
-                                const targetUser = data.data.find((u: any) => u.email === email);
-                                if (targetUser) {
-                                  await fetch("/api/admin/delete-user", {
-                                    method: "PUT",
-                                    headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-                                    body: JSON.stringify({ userId: targetUser._id, action: "reject" })
-                                  });
-                                  fetchNotifications();
-                                }
+                                fetchNotifications();
+                              } else {
+                                alert(data.error || "Failed to reject deletion");
                               }
                             }}
                             className="px-3 py-1.5 rounded-lg bg-red-500/20 text-red-400 hover:bg-red-500/30 text-xs font-medium"
