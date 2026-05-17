@@ -465,18 +465,19 @@ export default function ArtistDashboard() {
                   <div className="space-y-3">
                     {upcomingBookings.slice(0, 3).map((booking) => {
                       const orgPhone = (booking.organizerId as any)?.phone || "";
-                      const advanceAmt = booking.advanceAmount || Math.round(booking.finalPrice * 0.3);
-                      const restAmt = booking.finalPrice - advanceAmt;
                       return (
                       <div key={booking._id} className="p-4 rounded-xl bg-white/[0.04]">
                         <div className="flex items-center justify-between">
                           <div>
                             <p className="text-white font-medium">{booking.eventName}</p>
                             <p className="text-sm text-white/40">
-                              {(booking.proposedDates || []).length > 0
-                                ? `${(booking.proposedDates || []).length} proposed dates`
-                                : new Date(booking.date).toLocaleDateString()
-                              } {(booking.proposedVenues || []).length > 0 ? `• ${(booking.proposedVenues || []).length} venues` : booking.venue}
+                              {booking.organizerName}
+                              {booking.acceptedDate
+                                ? ` • ${new Date(booking.acceptedDate).toLocaleDateString()}`
+                                : (booking.proposedDates || []).length > 0
+                                  ? ` • ${(booking.proposedDates || []).length} proposed dates`
+                                  : booking.date ? ` • ${new Date(booking.date).toLocaleDateString()}` : ""
+                              }
                             </p>
                           </div>
                           <div className="text-right">
@@ -487,7 +488,7 @@ export default function ArtistDashboard() {
                         {(booking.status === "accepted" || booking.status === "confirmed") && (
                           <div className="mt-3 pt-3 border-t border-white/[0.06] space-y-1 text-sm">
                             {booking.status === "confirmed" && booking.paymentType === "advance" && (
-                              <p className="text-brand-orange font-medium">Advance received. Ask rest ₹{restAmt.toLocaleString()} from organizer before show.</p>
+                              <p className="text-brand-orange font-medium">Advance received. Ask rest ₹{booking.artistPayout.toLocaleString()} from organizer before show.</p>
                             )}
                             <p className="text-white/50">Contact: <span className="text-white">{booking.organizerName}</span> • <span className="text-white">{booking.organizerEmail}</span>{orgPhone ? <span> • <span className="text-white">{orgPhone}</span></span> : ""}</p>
                           </div>
@@ -893,8 +894,6 @@ export default function ArtistDashboard() {
               <div className="space-y-3">
                 {bookings.map((booking) => {
                   const orgPhone = (booking.organizerId as any)?.phone || "";
-                  const advanceAmt = booking.advanceAmount || Math.round(booking.finalPrice * 0.3);
-                  const restAmt = booking.finalPrice - advanceAmt;
                   return (
                     <div key={booking._id} className="glass-card p-4">
                       <div className="flex items-center justify-between mb-2">
@@ -925,7 +924,7 @@ export default function ArtistDashboard() {
                         <div className="mt-3 pt-3 border-t border-white/[0.06] space-y-2">
                           {booking.status === "confirmed" && booking.paymentType === "advance" && (
                             <p className="text-sm text-brand-orange font-medium">
-                              Advance received. Ask rest ₹{restAmt.toLocaleString()} from organizer before show.
+                              Advance received. Ask rest ₹{booking.artistPayout.toLocaleString()} from organizer before show.
                             </p>
                           )}
                           <div className="text-sm text-white/50">
