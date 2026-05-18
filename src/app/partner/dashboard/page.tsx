@@ -187,6 +187,11 @@ export default function PartnerDashboard() {
     const token = localStorage.getItem("token");
     if (!token || !bookingForm.artistId) return;
 
+    if (!bookingForm.eventName.trim()) {
+      setBookingError("Please enter an event name");
+      return;
+    }
+
     const filteredDates = bookingForm.dates.filter(d => d.trim() !== "");
     const filteredVenues = bookingForm.venues.filter(v => v.trim() !== "");
 
@@ -208,7 +213,7 @@ export default function PartnerDashboard() {
         },
         body: JSON.stringify({
           artistId: bookingForm.artistId,
-          eventName: bookingForm.eventName,
+          eventName: bookingForm.eventName.trim(),
           eventType: bookingForm.eventType,
           proposedDates: filteredDates,
           proposedVenues: filteredVenues,
@@ -224,6 +229,7 @@ export default function PartnerDashboard() {
         setTimeout(() => setBookingSuccess(""), 3000);
       } else {
         setBookingError(data.error || "Failed to create booking");
+        if (data.error?.includes("phone")) alert(data.error);
       }
     } catch (error) {
       console.error("Error creating booking:", error);
@@ -665,16 +671,10 @@ export default function PartnerDashboard() {
                     </div>
                     <button onClick={() => setSelectedArtist(null)} className="ml-auto text-white/40"><X className="w-5 h-5" /></button>
                   </div>
-                  {bookingSuccess && (
-                    <div className="mb-4 p-3 rounded-xl bg-green-500/10 text-green-400 text-sm">{bookingSuccess}</div>
-                  )}
-                  {bookingError && (
-                    <div className="mb-4 p-3 rounded-xl bg-red-500/10 text-red-400 text-sm">{bookingError}</div>
-                  )}
                   <div className="space-y-4">
                     <div>
                       <label className="block text-sm text-white/40 mb-1">Event Name *</label>
-                      <input type="text" value={bookingForm.eventName} onChange={(e) => setBookingForm({ ...bookingForm, eventName: e.target.value })} className="w-full px-4 py-3 rounded-xl bg-white/[0.04] border border-white/[0.08] text-white" placeholder="My Wedding" />
+                      <input type="text" value={bookingForm.eventName} onChange={(e) => setBookingForm({ ...bookingForm, eventName: e.target.value })} className="w-full px-4 py-3 rounded-xl bg-white/[0.04] border border-white/[0.08] text-white" placeholder="My Wedding" required />
                     </div>
                     <div>
                       <label className="block text-sm text-white/40 mb-1">Event Type</label>
@@ -724,6 +724,12 @@ export default function PartnerDashboard() {
                       <span className="text-white/40">Final Price:</span>
                       <span className="text-xl font-bold gradient-text">₹{calculateFinalPrice(selectedArtist.price).toLocaleString()}</span>
                     </div>
+                    {bookingSuccess && (
+                      <div className="p-3 rounded-xl bg-green-500/10 text-green-400 text-sm text-center">{bookingSuccess}</div>
+                    )}
+                    {bookingError && (
+                      <div className="p-3 rounded-xl bg-red-500/10 text-red-400 text-sm text-center font-medium">{bookingError}</div>
+                    )}
                     <div className="flex gap-3">
                       <button onClick={() => setSelectedArtist(null)} className="flex-1 px-4 py-3 rounded-xl bg-white/[0.04] text-white/60 hover:text-white">
                         Cancel
