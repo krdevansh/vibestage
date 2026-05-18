@@ -1,21 +1,10 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef } from "react";
 import Link from "next/link";
 
 export default function HeroSection() {
   const glowRef = useRef<HTMLDivElement>(null);
-  const [showBookButton, setShowBookButton] = useState(false);
-
-  useEffect(() => {
-    const userStr = localStorage.getItem("user");
-    if (userStr) {
-      const user = JSON.parse(userStr);
-      if (user.role === "event_partner" || user.role === "admin") {
-        setShowBookButton(true);
-      }
-    }
-  }, []);
 
   useEffect(() => {
     const handleMouse = (e: MouseEvent) => {
@@ -88,11 +77,7 @@ export default function HeroSection() {
 
         {/* CTAs */}
         <div className="flex flex-col sm:flex-row items-center justify-center gap-4 opacity-0 animate-fade-in animate-delay-500">
-          {showBookButton && (
-            <Link href="/artists" className="btn-primary text-lg !px-10 !py-4" id="hero-cta-primary">
-              <span>Book Artists</span>
-            </Link>
-          )}
+
           <Link href="/login?role=artist" className="btn-secondary text-lg !px-10 !py-4" id="hero-cta-artist">
             <span>Login as Artist</span>
           </Link>
