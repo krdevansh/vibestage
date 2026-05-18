@@ -817,35 +817,23 @@ export default function ArtistDashboard() {
                         <div><span className="text-white/40">Client:</span> <span className="text-white">{booking.organizerName}</span></div>
                       </div>
                       
-                      {/* Proposed Dates */}
+                      {/* Proposed Date & Venue Pairs */}
                       <div className="mb-4">
-                        <p className="text-sm text-white/40 mb-2">Proposed Dates (select one):</p>
+                        <p className="text-sm text-white/40 mb-2">Proposed Date & Venue (select one pair):</p>
                         <div className="flex flex-wrap gap-2">
-                          {(booking.proposedDates || []).map((d, i) => (
-                            <button
-                              key={i}
-                              onClick={() => setSelData(d, selData.venue)}
-                              className={`px-3 py-1.5 rounded-lg text-sm border transition-all ${selData.date === d ? "bg-brand-orange/20 border-brand-orange text-white" : "bg-white/[0.04] border-white/[0.08] text-white/60 hover:text-white"}`}
-                            >
-                              {new Date(d).toLocaleDateString()}
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-
-                      {/* Proposed Venues */}
-                      <div className="mb-4">
-                        <p className="text-sm text-white/40 mb-2">Proposed Venues (select one):</p>
-                        <div className="flex flex-wrap gap-2">
-                          {(booking.proposedVenues || []).map((v, i) => (
-                            <button
-                              key={i}
-                              onClick={() => setSelData(selData.date, v)}
-                              className={`px-3 py-1.5 rounded-lg text-sm border transition-all ${selData.venue === v ? "bg-brand-orange/20 border-brand-orange text-white" : "bg-white/[0.04] border-white/[0.08] text-white/60 hover:text-white"}`}
-                            >
-                              {v}
-                            </button>
-                          ))}
+                          {(booking.proposedDates || []).map((d, i) => {
+                            const venue = (booking.proposedVenues || [])[i];
+                            if (!venue) return null;
+                            return (
+                              <button
+                                key={i}
+                                onClick={() => setSelData(d, venue)}
+                                className={`px-3 py-2 rounded-lg text-sm border transition-all ${selData.date === d && selData.venue === venue ? "bg-brand-orange/20 border-brand-orange text-white" : "bg-white/[0.04] border-white/[0.08] text-white/60 hover:text-white"}`}
+                              >
+                                {new Date(d).toLocaleDateString()} → {venue}
+                              </button>
+                            );
+                          })}
                         </div>
                       </div>
 
@@ -872,7 +860,7 @@ export default function ArtistDashboard() {
                         </button>
                       </div>
                       {(!selData.date || !selData.venue) && (
-                        <p className="text-xs text-white/30 mt-2 text-center">Select a date and venue to enable Accept</p>
+                        <p className="text-xs text-white/30 mt-2 text-center">Select a date-venue pair to enable Accept</p>
                       )}
                     </div>
                   );

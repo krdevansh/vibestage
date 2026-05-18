@@ -192,13 +192,26 @@ export default function PartnerDashboard() {
       return;
     }
 
-    const filteredDates = bookingForm.dates.filter(d => d.trim() !== "");
-    const filteredVenues = bookingForm.venues.filter(v => v.trim() !== "");
+    const pairs = bookingForm.dates.slice(0, 2).map((d, i) => ({ date: d.trim(), venue: (bookingForm.venues[i] || "").trim() }));
+    const validPairs = pairs.filter(p => p.date && p.venue);
+    const orphanDates = pairs.filter(p => p.date && !p.venue);
+    const orphanVenues = pairs.filter(p => !p.date && p.venue);
 
-    if (filteredDates.length === 0 || filteredVenues.length === 0) {
-      setBookingError("Please provide at least one date and one venue");
+    if (validPairs.length === 0) {
+      setBookingError("Please provide at least one date with a matching venue");
       return;
     }
+    if (orphanDates.length > 0) {
+      setBookingError("Every date must have a venue name beside it");
+      return;
+    }
+    if (orphanVenues.length > 0) {
+      setBookingError("Every venue must have a date selected beside it");
+      return;
+    }
+
+    const filteredDates = validPairs.map(p => p.date);
+    const filteredVenues = validPairs.map(p => p.venue);
 
     setBookingLoading(true);
     setBookingSuccess("");
@@ -661,68 +674,56 @@ export default function PartnerDashboard() {
             )}
 
             {selectedArtist && (
-              <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-brand-bg/90 overflow-y-auto">
-                <div className="glass-card p-6 max-w-lg w-full my-8">
-                  <div className="flex items-center gap-4 mb-4">
-                    <Image src={selectedArtist.image} alt={selectedArtist.name} width={64} height={64} className="rounded-xl object-cover" />
-                    <div>
-                      <h3 className="text-lg font-semibold text-white">{selectedArtist.name}</h3>
-                      <p className="text-sm text-white/40">{selectedArtist.genre} • {selectedArtist.location}</p>
+              <div className="fixed inset-0 z-50 flex items-start justify-center p-2 sm:p-4 bg-brand-bg/90 overflow-y-auto pt-4 sm:pt-8">
+                <div className="glass-card p-4 sm:p-6 max-w-lg w-full my-4">
+                  <div className="flex items-center gap-3 mb-4">
+                    <Image src={selectedArtist.image} alt={selectedArtist.name} width={48} height={48} className="rounded-xl object-cover w-12 h-12" />
+                    <div className="min-w-0 flex-1">
+                      <h3 className="text-base sm:text-lg font-semibold text-white truncate">{selectedArtist.name}</h3>
+                      <p className="text-xs sm:text-sm text-white/40 truncate">{selectedArtist.genre} • {selectedArtist.location}</p>
                     </div>
-                    <button onClick={() => setSelectedArtist(null)} className="ml-auto text-white/40"><X className="w-5 h-5" /></button>
+                    <button onClick={() => setSelectedArtist(null)} className="shrink-0 text-white/40"><X className="w-5 h-5" /></button>
                   </div>
-                  <div className="space-y-4">
-                    <div>
-                      <label className="block text-sm text-white/40 mb-1">Event Name *</label>
-                      <input type="text" value={bookingForm.eventName} onChange={(e) => setBookingForm({ ...bookingForm, eventName: e.target.value })} className="w-full px-4 py-3 rounded-xl bg-white/[0.04] border border-white/[0.08] text-white" placeholder="My Wedding" required />
+                  <div className="space-y-3">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-xs text-white/40 mb-1">Event Name *</label>
+                        <input type="text" value={bookingForm.eventName} onChange={(e) => setBookingForm({ ...bookingForm, eventName: e.target.value })} className="w-full px-3 py-2.5 rounded-xl bg-white/[0.04] border border-white/[0.08] text-white text-sm" placeholder="My Wedding" required />
+                      </div>
+                      <div>
+                        <label className="block text-xs text-white/40 mb-1">Event Type</label>
+                        <select value={bookingForm.eventType} onChange={(e) => setBookingForm({ ...bookingForm, eventType: e.target.value })} className="w-full px-3 py-2.5 rounded-xl bg-white/[0.04] border border-white/[0.08] text-white text-sm">
+                          <option value="Private Event">Private Event</option>
+                          <option value="Wedding">Wedding</option>
+                          <option value="Corporate">Corporate</option>
+                          <option value="Birthday">Birthday</option>
+                          <option value="Festival">Festival</option>
+                        </select>
+                      </div>
                     </div>
                     <div>
-                      <label className="block text-sm text-white/40 mb-1">Event Type</label>
-                      <select value={bookingForm.eventType} onChange={(e) => setBookingForm({ ...bookingForm, eventType: e.target.value })} className="w-full px-4 py-3 rounded-xl bg-white/[0.04] border border-white/[0.08] text-white">
-                        <option value="Private Event">Private Event</option>
-                        <option value="Wedding">Wedding</option>
-                        <option value="Corporate">Corporate</option>
-                        <option value="Birthday">Birthday</option>
-                        <option value="Festival">Festival</option>
-                      </select>
-                    </div>
-                    <div>
-                      <label className="block text-sm text-white/40 mb-1">Proposed Dates * (up to 5, future dates)</label>
+                      <label className="block text-xs text-white/40 mb-1">Proposed Dates and Venues *</label>
                       <div className="space-y-2">
-                        {bookingForm.dates.map((d, i) => (
-                          <div key={i} className="flex items-center gap-2">
-                            <input type="date" value={d} min={new Date(Date.now() + 86400000).toISOString().split("T")[0]}
+                        {[0, 1].map((i) => (
+                          <div key={i} className="flex gap-2">
+                            <input type="date" value={bookingForm.dates[i]} min={new Date(Date.now() + 86400000).toISOString().split("T")[0]}
                               onChange={(e) => { const nd = [...bookingForm.dates]; nd[i] = e.target.value; setBookingForm({ ...bookingForm, dates: nd }); }}
-                              className="flex-1 px-4 py-3 rounded-xl bg-white/[0.04] border border-white/[0.08] text-white" />
-                            {i > 0 && d && (
-                              <button onClick={() => { const nd = [...bookingForm.dates]; nd[i] = ""; setBookingForm({ ...bookingForm, dates: nd }); }} className="text-red-400"><X className="w-4 h-4" /></button>
-                            )}
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                    <div>
-                      <label className="block text-sm text-white/40 mb-1">Proposed Venues * (up to 5)</label>
-                      <div className="space-y-2">
-                        {bookingForm.venues.map((v, i) => (
-                          <div key={i} className="flex items-center gap-2">
-                            <input type="text" value={v} placeholder={i === 0 ? "Venue name" : `Venue option ${i + 1}`}
+                              className="w-1/2 px-3 py-2.5 rounded-xl bg-white/[0.04] border border-white/[0.08] text-white text-sm" />
+                            <input type="text" value={bookingForm.venues[i]} placeholder={i === 0 ? "Venue name" : "Venue name"}
                               onChange={(e) => { const nv = [...bookingForm.venues]; nv[i] = e.target.value; setBookingForm({ ...bookingForm, venues: nv }); }}
-                              className="flex-1 px-4 py-3 rounded-xl bg-white/[0.04] border border-white/[0.08] text-white" />
-                            {i > 0 && v && (
-                              <button onClick={() => { const nv = [...bookingForm.venues]; nv[i] = ""; setBookingForm({ ...bookingForm, venues: nv }); }} className="text-red-400"><X className="w-4 h-4" /></button>
-                            )}
+                              className="w-1/2 px-3 py-2.5 rounded-xl bg-white/[0.04] border border-white/[0.08] text-white text-sm" />
                           </div>
                         ))}
                       </div>
+                      <p className="text-[10px] text-white/30 mt-1">Each date needs a venue beside it. Pairs help the artist decide.</p>
                     </div>
                     <div>
-                      <label className="block text-sm text-white/40 mb-1">Notes</label>
-                      <textarea value={bookingForm.notes} onChange={(e) => setBookingForm({ ...bookingForm, notes: e.target.value })} rows={2} className="w-full px-4 py-3 rounded-xl bg-white/[0.04] border border-white/[0.08] text-white resize-none" />
+                      <label className="block text-xs text-white/40 mb-1">Notes</label>
+                      <textarea value={bookingForm.notes} onChange={(e) => setBookingForm({ ...bookingForm, notes: e.target.value })} rows={2} className="w-full px-3 py-2.5 rounded-xl bg-white/[0.04] border border-white/[0.08] text-white text-sm resize-none" />
                     </div>
                     <div className="flex items-center justify-between p-3 rounded-lg bg-brand-orange/10">
-                      <span className="text-white/40">Final Price:</span>
-                      <span className="text-xl font-bold gradient-text">₹{calculateFinalPrice(selectedArtist.price).toLocaleString()}</span>
+                      <span className="text-white/40 text-sm">Final Price:</span>
+                      <span className="text-lg font-bold gradient-text">₹{calculateFinalPrice(selectedArtist.price).toLocaleString()}</span>
                     </div>
                     {bookingSuccess && (
                       <div className="p-3 rounded-xl bg-green-500/10 text-green-400 text-sm text-center">{bookingSuccess}</div>
@@ -731,10 +732,10 @@ export default function PartnerDashboard() {
                       <div className="p-3 rounded-xl bg-red-500/10 text-red-400 text-sm text-center font-medium">{bookingError}</div>
                     )}
                     <div className="flex gap-3">
-                      <button onClick={() => setSelectedArtist(null)} className="flex-1 px-4 py-3 rounded-xl bg-white/[0.04] text-white/60 hover:text-white">
+                      <button onClick={() => setSelectedArtist(null)} className="flex-1 px-4 py-2.5 rounded-xl bg-white/[0.04] text-white/60 hover:text-white text-sm">
                         Cancel
                       </button>
-                      <button onClick={createBooking} disabled={bookingLoading} className="flex-1 btn-primary">
+                      <button onClick={createBooking} disabled={bookingLoading} className="flex-1 px-4 py-2.5 rounded-xl bg-brand-gradient text-white text-sm font-medium">
                         <span>{bookingLoading ? "Sending..." : "Send Booking Request"}</span>
                       </button>
                     </div>
@@ -806,11 +807,20 @@ export default function PartnerDashboard() {
                         </div>
                       </div>
 
-                      {/* Show proposed dates/venues for pending */}
+                      {/* Show proposed date-venue pairs for pending */}
                       {booking.status === "pending" && (
-                        <div className="mb-3 text-sm">
-                          <p className="text-white/40">Proposed Dates: {(booking.proposedDates || []).map((d: string) => new Date(d).toLocaleDateString()).join(", ")}</p>
-                          <p className="text-white/40">Proposed Venues: {(booking.proposedVenues || []).join(", ")}</p>
+                        <div className="mb-3 text-sm space-y-1">
+                          <p className="text-white/40 font-medium">Proposed Options:</p>
+                          {(booking.proposedDates || []).map((d: string, i: number) => {
+                            const venue = (booking.proposedVenues || [])[i];
+                            if (!venue) return null;
+                            return (
+                              <p key={i} className="text-white flex items-center gap-2">
+                                <span className="w-1.5 h-1.5 rounded-full bg-brand-orange shrink-0" />
+                                {new Date(d).toLocaleDateString()} <span className="text-white/20">→</span> {venue}
+                              </p>
+                            );
+                          })}
                         </div>
                       )}
 
