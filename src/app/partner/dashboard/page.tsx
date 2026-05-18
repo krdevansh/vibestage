@@ -508,7 +508,7 @@ export default function PartnerDashboard() {
       {/* Mobile Bottom Nav */}
       <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-50 bg-brand-surface border-t border-white/[0.06] flex justify-around py-2 px-1">
         {[
-          { id: "dashboard", icon: LayoutDashboard, label: "Home" },
+          { id: "dashboard", icon: LayoutDashboard, label: "Dashboard" },
           { id: "browse", icon: Music, label: "Browse" },
           { id: "bookings", icon: Calendar, label: "Bookings" },
           { id: "notifications", icon: Bell, label: "Alerts" },
