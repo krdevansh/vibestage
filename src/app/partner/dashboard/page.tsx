@@ -162,13 +162,13 @@ export default function PartnerDashboard() {
       const userData = localStorage.getItem("user");
       
       if (!token || !userData) {
-        router.push("/login");
+        router.replace("/login");
         return;
       }
 
       const parsed = JSON.parse(userData);
       if (parsed.role !== "event_partner") {
-        router.push("/login");
+        router.replace("/login");
         return;
       }
       setUser(parsed);
@@ -505,8 +505,36 @@ export default function PartnerDashboard() {
         </button>
       </aside>
 
+      {/* Mobile Bottom Nav */}
+      <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-50 bg-brand-surface border-t border-white/[0.06] flex justify-around py-2 px-1">
+        {[
+          { id: "dashboard", icon: LayoutDashboard, label: "Home" },
+          { id: "browse", icon: Music, label: "Browse" },
+          { id: "bookings", icon: Calendar, label: "Bookings" },
+          { id: "notifications", icon: Bell, label: "Alerts" },
+          { id: "profile", icon: Settings, label: "Profile" },
+        ].map((item) => (
+          <button
+            key={item.id}
+            onClick={() => setActiveTab(item.id)}
+            className={`relative flex flex-col items-center gap-0.5 px-3 py-1 rounded-lg transition-all ${
+              activeTab === item.id ? "text-brand-orange" : "text-white/40 hover:text-white/60"
+            }`}
+          >
+            <item.icon className="w-5 h-5" />
+            <span className="text-[10px] font-medium">{item.label}</span>
+            {item.id === "bookings" && pendingBookings.length > 0 && (
+              <span className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-brand-pink" />
+            )}
+            {item.id === "notifications" && notifUnreadCount > 0 && (
+              <span className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-brand-pink" />
+            )}
+          </button>
+        ))}
+      </nav>
+
       {/* Main Content */}
-      <main className="flex-1 lg:ml-64 p-6 pt-8">
+      <main className="flex-1 lg:ml-64 p-4 sm:p-6 pt-8 pb-20 lg:pb-6">
         {/* Mobile Header */}
         <div className="lg:hidden flex items-center justify-between mb-6">
           <h1 className="text-xl font-display font-bold gradient-text">Partner Dashboard</h1>

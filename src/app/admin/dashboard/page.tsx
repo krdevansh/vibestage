@@ -131,13 +131,13 @@ export default function AdminDashboard() {
       const userData = localStorage.getItem("user");
       
       if (!token || !userData) {
-        router.push("/login");
+        router.replace("/login");
         return;
       }
 
       const parsed = JSON.parse(userData);
       if (parsed.role !== "admin") {
-        router.push("/login");
+        router.replace("/login");
         return;
       }
       setUser(parsed);
@@ -955,6 +955,12 @@ export default function AdminDashboard() {
                                 });
                                 const data = await res.json();
                                 if (data.success) {
+                                  if (data.currentSessionTerminated) {
+                                    localStorage.removeItem("token");
+                                    localStorage.removeItem("user");
+                                    router.replace("/login");
+                                    return;
+                                  }
                                   const token2 = localStorage.getItem("token");
                                   const res2 = await fetch("/api/sessions", {
                                     headers: { Authorization: `Bearer ${token2}` }

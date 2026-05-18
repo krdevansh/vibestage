@@ -70,7 +70,16 @@ export async function DELETE(request: NextRequest) {
     }
 
     await Session.deleteOne({ _id: sessionId });
-    return NextResponse.json({ success: true, message: "Session terminated" });
+
+    // Check if the deleted session was the current device (token matches)
+    const requestToken = request.headers.get("authorization")?.replace("Bearer ", "");
+    const isCurrentSession = requestToken && session.token === requestToken;
+
+    return NextResponse.json({
+      success: true,
+      message: "Session terminated",
+      currentSessionTerminated: isCurrentSession
+    });
   } catch (error) {
     console.error("DELETE /api/sessions error:", error);
     return NextResponse.json({ success: false, error: "Failed to delete session" }, { status: 500 });
