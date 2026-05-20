@@ -488,7 +488,7 @@ export default function ArtistDashboard() {
       )}
 
       {/* Main Content */}
-      <main className="flex-1 lg:ml-64 p-4 sm:p-6 pt-16 lg:pt-8 pb-20 lg:pb-6">
+      <main className="flex-1 lg:ml-64 p-4 sm:p-6 pt-16 lg:pt-8 pb-6">
 
         {/* Dashboard Tab */}
         {activeTab === "dashboard" && (
@@ -668,7 +668,7 @@ export default function ArtistDashboard() {
                       <Image src={img} alt={`Gallery ${idx + 1}`} fill className="object-cover" />
                       <button
                         onClick={() => removeGalleryImage(idx)}
-                        className="absolute top-2 right-2 p-1 rounded-full bg-red-500 text-white opacity-0 group-hover:opacity-100 transition-opacity"
+                        className="absolute top-2 right-2 p-2 min-w-[40px] min-h-[40px] flex items-center justify-center rounded-full bg-red-500 text-white opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity"
                       >
                         <X className="w-4 h-4" />
                       </button>
@@ -748,15 +748,15 @@ export default function ArtistDashboard() {
               {/* Pricing */}
               <div className="glass-card p-6">
                 <h3 className="text-lg font-semibold text-white mb-4">Pricing</h3>
-                <div className="flex items-center gap-8">
-                  <div className="flex-1">
+                <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-4 sm:gap-8">
+                  <div className="flex-1 w-full">
                     <label className="block text-sm text-white/40 mb-1.5">Your Base Price (₹)</label>
                     <input type="number" value={profileForm.price} onChange={(e) => setProfileForm({ ...profileForm, price: parseInt(e.target.value) || 0 })} className="w-full px-4 py-3 rounded-xl bg-white/[0.04] border border-white/[0.08] text-white" />
                   </div>
-                  <div className="flex-1">
+                  <div className="flex-1 w-full">
                     <label className="block text-sm text-brand-orange mb-1.5">Final Customer Price (₹)</label>
-                    <div className="px-4 py-3 rounded-xl bg-brand-orange/10 border border-brand-orange/30 text-white">
-                      ₹{calculateFinalPrice(profileForm.price).toLocaleString()}
+                    <div className="px-4 py-3 rounded-xl bg-brand-orange/10 border border-brand-orange/30 text-white min-h-[46px] flex items-center justify-between sm:justify-start">
+                      <span>₹{calculateFinalPrice(profileForm.price).toLocaleString()}</span>
                       <span className="text-xs text-white/40 ml-2">(auto-calculated)</span>
                     </div>
                   </div>
@@ -1085,62 +1085,124 @@ export default function ArtistDashboard() {
             </p>
 
             {sessions.length > 0 ? (
-              <div className="overflow-x-auto">
-                <table className="w-full">
-                  <thead>
-                    <tr className="border-b border-white/[0.06]">
-                      <th className="text-left py-4 px-4 text-white/50 text-sm font-medium">#</th>
-                      <th className="text-left py-4 px-4 text-white/50 text-sm font-medium">Device</th>
-                      <th className="text-left py-4 px-4 text-white/50 text-sm font-medium">IP Address</th>
-                      <th className="text-left py-4 px-4 text-white/50 text-sm font-medium">Logged In</th>
-                      <th className="text-left py-4 px-4 text-white/50 text-sm font-medium">Last Active</th>
-                      <th className="text-left py-4 px-4 text-white/50 text-sm font-medium">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {sessions.map((session: any, idx: number) => (
-                      <tr key={session._id} className="border-b border-white/[0.04] hover:bg-white/[0.02]">
-                        <td className="py-4 px-4 text-white/50 text-sm">{idx + 1}</td>
-                        <td className="py-4 px-4 text-white/70 text-sm max-w-[300px] truncate" title={session.deviceInfo}>
-                          {session.deviceInfo}
-                        </td>
-                        <td className="py-4 px-4 text-white/70 text-sm">{session.ipAddress}</td>
-                        <td className="py-4 px-4 text-white/50 text-sm">{new Date(session.createdAt).toLocaleString()}</td>
-                        <td className="py-4 px-4 text-white/50 text-sm">{new Date(session.lastActive).toLocaleString()}</td>
-                        <td className="py-4 px-4">
-                          <button
-                            onClick={async () => {
-                              const token = localStorage.getItem("token");
-                              if (!confirm("Terminate this session? You will be logged out on that device.")) return;
-                              const res = await fetch(`/api/sessions?sessionId=${session._id}`, {
-                                method: "DELETE",
-                                headers: { Authorization: `Bearer ${token}` }
-                              });
-                              const data = await res.json();
-                              if (data.success) {
-                                if (data.currentSessionTerminated) {
-                                  localStorage.removeItem("token");
-                                  localStorage.removeItem("user");
-                                  router.replace("/login");
-                                  return;
-                                }
-                                const token2 = localStorage.getItem("token");
-                                const res2 = await fetch("/api/sessions", {
-                                  headers: { Authorization: `Bearer ${token2}` }
-                                });
-                                const data2 = await res2.json();
-                                if (data2.success) setSessions(data2.data.sessions);
-                              }
-                            }}
-                            className="px-2 py-1 rounded-lg bg-red-500/20 text-red-400 hover:bg-red-500/30 text-xs"
-                          >
-                            Terminate
-                          </button>
-                        </td>
+              <div>
+                {/* Desktop View */}
+                <div className="overflow-x-auto hidden md:block">
+                  <table className="w-full">
+                    <thead>
+                      <tr className="border-b border-white/[0.06]">
+                        <th className="text-left py-4 px-4 text-white/50 text-sm font-medium">#</th>
+                        <th className="text-left py-4 px-4 text-white/50 text-sm font-medium">Device</th>
+                        <th className="text-left py-4 px-4 text-white/50 text-sm font-medium">IP Address</th>
+                        <th className="text-left py-4 px-4 text-white/50 text-sm font-medium">Logged In</th>
+                        <th className="text-left py-4 px-4 text-white/50 text-sm font-medium">Last Active</th>
+                        <th className="text-left py-4 px-4 text-white/50 text-sm font-medium">Actions</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
+                    </thead>
+                    <tbody>
+                      {sessions.map((session: any, idx: number) => (
+                        <tr key={session._id} className="border-b border-white/[0.04] hover:bg-white/[0.02]">
+                          <td className="py-4 px-4 text-white/50 text-sm">{idx + 1}</td>
+                          <td className="py-4 px-4 text-white/70 text-sm max-w-[300px] truncate" title={session.deviceInfo}>
+                            {session.deviceInfo}
+                          </td>
+                          <td className="py-4 px-4 text-white/70 text-sm">{session.ipAddress}</td>
+                          <td className="py-4 px-4 text-white/50 text-sm">{new Date(session.createdAt).toLocaleString()}</td>
+                          <td className="py-4 px-4 text-white/50 text-sm">{new Date(session.lastActive).toLocaleString()}</td>
+                          <td className="py-4 px-4">
+                            <button
+                              onClick={async () => {
+                                const token = localStorage.getItem("token");
+                                if (!confirm("Terminate this session? You will be logged out on that device.")) return;
+                                const res = await fetch(`/api/sessions?sessionId=${session._id}`, {
+                                  method: "DELETE",
+                                  headers: { Authorization: `Bearer ${token}` }
+                                });
+                                const data = await res.json();
+                                if (data.success) {
+                                  if (data.currentSessionTerminated) {
+                                    localStorage.removeItem("token");
+                                    localStorage.removeItem("user");
+                                    router.replace("/login");
+                                    return;
+                                  }
+                                  const token2 = localStorage.getItem("token");
+                                  const res2 = await fetch("/api/sessions", {
+                                    headers: { Authorization: `Bearer ${token2}` }
+                                  });
+                                  const data2 = await res2.json();
+                                  if (data2.success) setSessions(data2.data.sessions);
+                                }
+                              }}
+                              className="px-2 py-1 rounded-lg bg-red-500/20 text-red-400 hover:bg-red-500/30 text-xs"
+                            >
+                              Terminate
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+
+                {/* Mobile View */}
+                <div className="grid grid-cols-1 gap-4 md:hidden">
+                  {sessions.map((session: any, idx: number) => (
+                    <div key={session._id} className="glass-card p-4 space-y-3">
+                      <div className="flex items-center justify-between border-b border-white/[0.04] pb-2">
+                        <span className="text-white/50 text-xs font-semibold">Session #{idx + 1}</span>
+                        <button
+                          onClick={async () => {
+                            const token = localStorage.getItem("token");
+                            if (!confirm("Terminate this session? You will be logged out on that device.")) return;
+                            const res = await fetch(`/api/sessions?sessionId=${session._id}`, {
+                              method: "DELETE",
+                              headers: { Authorization: `Bearer ${token}` }
+                            });
+                            const data = await res.json();
+                            if (data.success) {
+                              if (data.currentSessionTerminated) {
+                                localStorage.removeItem("token");
+                                localStorage.removeItem("user");
+                                router.replace("/login");
+                                return;
+                              }
+                              const token2 = localStorage.getItem("token");
+                              const res2 = await fetch("/api/sessions", {
+                                headers: { Authorization: `Bearer ${token2}` }
+                              });
+                              const data2 = await res2.json();
+                              if (data2.success) setSessions(data2.data.sessions);
+                            }
+                          }}
+                          className="min-h-[44px] px-3 py-1.5 rounded-lg bg-red-500/20 text-red-400 hover:bg-red-500/30 text-xs font-semibold"
+                        >
+                          Terminate
+                        </button>
+                      </div>
+                      <div className="grid grid-cols-2 gap-3 text-sm">
+                        <div className="col-span-2">
+                          <span className="text-white/40 text-xs block">Device</span>
+                          <span className="text-white/70 text-xs font-medium break-all block mt-0.5" title={session.deviceInfo}>
+                            {session.deviceInfo}
+                          </span>
+                        </div>
+                        <div>
+                          <span className="text-white/40 text-xs block">IP Address</span>
+                          <span className="text-white/70 font-medium block mt-0.5">{session.ipAddress}</span>
+                        </div>
+                        <div>
+                          <span className="text-white/40 text-xs block">Logged In</span>
+                          <span className="text-white/50 text-xs block mt-0.5">{new Date(session.createdAt).toLocaleString()}</span>
+                        </div>
+                        <div className="col-span-2">
+                          <span className="text-white/40 text-xs block">Last Active</span>
+                          <span className="text-white/50 text-xs block mt-0.5">{new Date(session.lastActive).toLocaleString()}</span>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
               </div>
             ) : (
               <div className="glass-card p-12 text-center">
@@ -1151,32 +1213,7 @@ export default function ArtistDashboard() {
         )}
       </main>
 
-      <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-50 bg-brand-surface border-t border-white/[0.06] flex justify-around py-2 px-1">
-        {[
-          { id: "dashboard", icon: LayoutDashboard, label: "Dashboard" },
-          { id: "requests", icon: Music, label: "Requests" },
-          { id: "earnings", icon: DollarSign, label: "Earnings" },
-          { id: "notifications", icon: Bell, label: "Alerts" },
-          { id: "profile", icon: User, label: "Profile" },
-        ].map((item) => (
-          <button
-            key={item.id}
-            onClick={() => setActiveTab(item.id)}
-            className={`relative flex flex-col items-center gap-0.5 px-3 py-1 rounded-lg transition-all ${
-              activeTab === item.id ? "text-brand-orange" : "text-white/40 hover:text-white/60"
-            }`}
-          >
-            <item.icon className="w-5 h-5" />
-            <span className="text-[10px] font-medium">{item.label}</span>
-            {item.id === "requests" && pendingBookings.length > 0 && (
-              <span className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-brand-pink" />
-            )}
-            {item.id === "notifications" && unreadCount > 0 && (
-              <span className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-brand-pink" />
-            )}
-          </button>
-        ))}
-      </nav>
+
     </div>
   );
 }

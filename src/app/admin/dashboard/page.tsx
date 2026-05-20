@@ -363,7 +363,7 @@ export default function AdminDashboard() {
         </div>
       )}
 
-      <main className="flex-1 lg:ml-64 p-4 sm:p-6 pt-16 lg:pt-6 pb-20 lg:pb-6">
+      <main className="flex-1 lg:ml-64 p-4 sm:p-6 pt-16 lg:pt-6 pb-6">
         <div className="max-w-7xl mx-auto">
           <div className="flex items-center justify-between mb-6 lg:mb-8">
             <div>
@@ -459,125 +459,241 @@ export default function AdminDashboard() {
                   <div className="w-10 h-10 border-2 border-brand-orange/30 border-t-brand-orange rounded-full animate-spin" />
                 </div>
               ) : artists.length > 0 ? (
-                <div className="overflow-x-auto">
-                  <table className="w-full">
-                    <thead>
-                      <tr className="border-b border-white/[0.06]">
-                        <th className="text-left py-4 px-4 text-white/50 text-sm font-medium">Artist</th>
-                        <th className="text-left py-4 px-4 text-white/50 text-sm font-medium">Email</th>
-                        <th className="text-left py-4 px-4 text-white/50 text-sm font-medium">Phone</th>
-                        <th className="text-left py-4 px-4 text-white/50 text-sm font-medium">Genre</th>
-                        <th className="text-left py-4 px-4 text-white/50 text-sm font-medium">Location</th>
-                        <th className="text-left py-4 px-4 text-white/50 text-sm font-medium">Rate</th>
-                        <th className="text-left py-4 px-4 text-white/50 text-sm font-medium">Registered</th>
-                        <th className="text-left py-4 px-4 text-white/50 text-sm font-medium">Actions</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {artists.map((artist) => (
-                        <tr key={artist._id} className="border-b border-white/[0.04] hover:bg-white/[0.02]">
-                          <td className="py-4 px-4">
-                            <div className="flex items-center gap-3">
-                              <div className="w-10 h-10 rounded-full overflow-hidden relative">
-                                <Image src={artist.image} alt={artist.name} fill className="object-cover" />
+                <div>
+                  {/* Desktop View */}
+                  <div className="overflow-x-auto hidden md:block">
+                    <table className="w-full">
+                      <thead>
+                        <tr className="border-b border-white/[0.06]">
+                          <th className="text-left py-4 px-4 text-white/50 text-sm font-medium">Artist</th>
+                          <th className="text-left py-4 px-4 text-white/50 text-sm font-medium">Email</th>
+                          <th className="text-left py-4 px-4 text-white/50 text-sm font-medium">Phone</th>
+                          <th className="text-left py-4 px-4 text-white/50 text-sm font-medium">Genre</th>
+                          <th className="text-left py-4 px-4 text-white/50 text-sm font-medium">Location</th>
+                          <th className="text-left py-4 px-4 text-white/50 text-sm font-medium">Rate</th>
+                          <th className="text-left py-4 px-4 text-white/50 text-sm font-medium">Registered</th>
+                          <th className="text-left py-4 px-4 text-white/50 text-sm font-medium">Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {artists.map((artist) => (
+                          <tr key={artist._id} className="border-b border-white/[0.04] hover:bg-white/[0.02]">
+                            <td className="py-4 px-4">
+                              <div className="flex items-center gap-3">
+                                <div className="w-10 h-10 rounded-full overflow-hidden relative">
+                                  <Image src={artist.image} alt={artist.name} fill className="object-cover" />
+                                </div>
+                                <div>
+                                  <p className="text-white font-medium">
+                                    {artist.name}
+                                    {(artist as any).isVerified ? (
+                                      <span className="ml-2 px-1.5 py-0.5 rounded text-[10px] bg-blue-500/20 text-blue-400 font-semibold align-middle">Verified</span>
+                                    ) : (
+                                      <span className="ml-2 px-1.5 py-0.5 rounded text-[10px] bg-yellow-500/20 text-yellow-400 font-semibold align-middle">Unverified</span>
+                                    )}
+                                  </p>
+                                  <p className="text-white/40 text-xs">{artist.bio || "No bio"}</p>
+                                </div>
                               </div>
-                              <div>
-                                <p className="text-white font-medium">
-                                  {artist.name}
-                                  {(artist as any).isVerified ? (
-                                    <span className="ml-2 px-1.5 py-0.5 rounded text-[10px] bg-blue-500/20 text-blue-400 font-semibold align-middle">Verified</span>
-                                  ) : (
-                                    <span className="ml-2 px-1.5 py-0.5 rounded text-[10px] bg-yellow-500/20 text-yellow-400 font-semibold align-middle">Unverified</span>
-                                  )}
-                                </p>
-                                <p className="text-white/40 text-xs">{artist.bio || "No bio"}</p>
-                              </div>
-                            </div>
-                          </td>
-                          <td className="py-4 px-4 text-white/70">{artist.email}</td>
-                          <td className="py-4 px-4 text-white/70">{artist.phone || "-"}</td>
-                          <td className="py-4 px-4">
-                            <span className="px-2 py-1 rounded-full text-xs bg-brand-orange/20 text-brand-orange">{artist.genre}</span>
-                          </td>
-                          <td className="py-4 px-4 text-white/70">{artist.location}</td>
-                          <td className="py-4 px-4 text-white/70">₹{artist.price?.toLocaleString()}</td>
-                          <td className="py-4 px-4 text-white/50 text-sm">
-                            {new Date(artist.createdAt).toLocaleDateString()}
-                          </td>
-                          <td className="py-4 px-4">
-                            <div className="flex items-center gap-2">
-                              {(artist as any).isVerified ? (
+                            </td>
+                            <td className="py-4 px-4 text-white/70">{artist.email}</td>
+                            <td className="py-4 px-4 text-white/70">{artist.phone || "-"}</td>
+                            <td className="py-4 px-4">
+                              <span className="px-2 py-1 rounded-full text-xs bg-brand-orange/20 text-brand-orange">{artist.genre}</span>
+                            </td>
+                            <td className="py-4 px-4 text-white/70">{artist.location}</td>
+                            <td className="py-4 px-4 text-white/70">₹{artist.price?.toLocaleString()}</td>
+                            <td className="py-4 px-4 text-white/50 text-sm">
+                              {new Date(artist.createdAt).toLocaleDateString()}
+                            </td>
+                            <td className="py-4 px-4">
+                              <div className="flex items-center gap-2">
+                                {(artist as any).isVerified ? (
+                                  <button
+                                    onClick={async () => {
+                                      const token = localStorage.getItem("token");
+                                      await fetch("/api/admin/users", {
+                                        method: "PUT",
+                                        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+                                        body: JSON.stringify({ userId: artist._id, action: "unverify", type: "artist" })
+                                      });
+                                      fetchData();
+                                    }}
+                                    className="p-2 rounded-lg bg-yellow-500/20 text-yellow-400 hover:bg-yellow-500/30"
+                                    title="Unverify Artist"
+                                  >
+                                    <XCircle className="w-4 h-4" />
+                                  </button>
+                                ) : (
+                                  <button
+                                    onClick={async () => {
+                                      const token = localStorage.getItem("token");
+                                      await fetch("/api/admin/users", {
+                                        method: "PUT",
+                                        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+                                        body: JSON.stringify({ userId: artist._id, action: "verify", type: "artist" })
+                                      });
+                                      fetchData();
+                                    }}
+                                    className="p-2 rounded-lg bg-green-500/20 text-green-400 hover:bg-green-500/30"
+                                    title="Verify Artist"
+                                  >
+                                    <CheckCircle className="w-4 h-4" />
+                                  </button>
+                                )}
+                                {artist.image && (
+                                  <button
+                                    onClick={async () => {
+                                      const token = localStorage.getItem("token");
+                                      if (!confirm("Delete this artist's profile picture?")) return;
+                                      const res = await fetch("/api/admin/users", {
+                                        method: "PUT",
+                                        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+                                        body: JSON.stringify({ userId: artist._id, action: "deleteProfileImage", type: "artist" })
+                                      });
+                                      const data = await res.json();
+                                      if (data.success) fetchData();
+                                    }}
+                                    className="p-2 rounded-lg bg-red-500/10 text-red-400 hover:bg-red-500/30"
+                                    title="Delete Profile Picture"
+                                  >
+                                    <Trash2 className="w-4 h-4" />
+                                  </button>
+                                )}
                                 <button
-                                  onClick={async () => {
-                                    const token = localStorage.getItem("token");
-                                    await fetch("/api/admin/users", {
-                                      method: "PUT",
-                                      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-                                      body: JSON.stringify({ userId: artist._id, action: "unverify", type: "artist" })
-                                    });
-                                    fetchData();
-                                  }}
-                                  className="p-2 rounded-lg bg-yellow-500/20 text-yellow-400 hover:bg-yellow-500/30"
-                                  title="Unverify Artist"
+                                  onClick={() => handleViewProfile(artist._id, "artist")}
+                                  className="p-2 rounded-lg bg-white/[0.04] hover:bg-white/[0.08] text-white/50 hover:text-white"
+                                  title="View"
                                 >
-                                  <XCircle className="w-4 h-4" />
+                                  <Eye className="w-4 h-4" />
                                 </button>
-                              ) : (
                                 <button
-                                  onClick={async () => {
-                                    const token = localStorage.getItem("token");
-                                    await fetch("/api/admin/users", {
-                                      method: "PUT",
-                                      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-                                      body: JSON.stringify({ userId: artist._id, action: "verify", type: "artist" })
-                                    });
-                                    fetchData();
-                                  }}
-                                  className="p-2 rounded-lg bg-green-500/20 text-green-400 hover:bg-green-500/30"
-                                  title="Verify Artist"
-                                >
-                                  <CheckCircle className="w-4 h-4" />
-                                </button>
-                              )}
-                              {artist.image && (
-                                <button
-                                  onClick={async () => {
-                                    const token = localStorage.getItem("token");
-                                    if (!confirm("Delete this artist's profile picture?")) return;
-                                    const res = await fetch("/api/admin/users", {
-                                      method: "PUT",
-                                      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-                                      body: JSON.stringify({ userId: artist._id, action: "deleteProfileImage", type: "artist" })
-                                    });
-                                    const data = await res.json();
-                                    if (data.success) fetchData();
-                                  }}
-                                  className="p-2 rounded-lg bg-red-500/10 text-red-400 hover:bg-red-500/30"
-                                  title="Delete Profile Picture"
+                                  onClick={() => handleDelete(artist._id, "artist")}
+                                  className="p-2 rounded-lg hover:bg-red-500/20 text-white/50 hover:text-red-400"
+                                  title="Delete"
                                 >
                                   <Trash2 className="w-4 h-4" />
                                 </button>
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+
+                  {/* Mobile View */}
+                  <div className="grid grid-cols-1 gap-4 md:hidden">
+                    {artists.map((artist) => (
+                      <div key={artist._id} className="glass-card p-4 space-y-4">
+                        <div className="flex items-center gap-3">
+                          <div className="w-12 h-12 rounded-full overflow-hidden relative shrink-0">
+                            <Image src={artist.image} alt={artist.name} fill className="object-cover" />
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <p className="text-white font-medium flex flex-wrap items-center gap-1.5">
+                              <span className="truncate">{artist.name}</span>
+                              {(artist as any).isVerified ? (
+                                <span className="px-1.5 py-0.5 rounded text-[10px] bg-blue-500/20 text-blue-400 font-semibold">Verified</span>
+                              ) : (
+                                <span className="px-1.5 py-0.5 rounded text-[10px] bg-yellow-500/20 text-yellow-400 font-semibold">Unverified</span>
                               )}
-                              <button
-                                onClick={() => handleViewProfile(artist._id, "artist")}
-                                className="p-2 rounded-lg bg-white/[0.04] hover:bg-white/[0.08] text-white/50 hover:text-white"
-                                title="View"
-                              >
-                                <Eye className="w-4 h-4" />
-                              </button>
-                              <button
-                                onClick={() => handleDelete(artist._id, "artist")}
-                                className="p-2 rounded-lg hover:bg-red-500/20 text-white/50 hover:text-red-400"
-                                title="Delete"
-                              >
-                                <Trash2 className="w-4 h-4" />
-                              </button>
-                            </div>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                            </p>
+                            <p className="text-white/40 text-xs truncate">{artist.bio || "No bio"}</p>
+                          </div>
+                        </div>
+                        <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm border-t border-white/[0.04] pt-3">
+                          <div>
+                            <p className="text-white/40 text-xs">Genre</p>
+                            <span className="inline-block mt-0.5 px-2 py-0.5 rounded-full text-xs bg-brand-orange/20 text-brand-orange">{artist.genre}</span>
+                          </div>
+                          <div>
+                            <p className="text-white/40 text-xs">Rate</p>
+                            <p className="text-white font-medium mt-0.5">₹{artist.price?.toLocaleString()}</p>
+                          </div>
+                          <div>
+                            <p className="text-white/40 text-xs">Location</p>
+                            <p className="text-white/70 mt-0.5 truncate">{artist.location}</p>
+                          </div>
+                          <div>
+                            <p className="text-white/40 text-xs">Registered</p>
+                            <p className="text-white/70 mt-0.5">{new Date(artist.createdAt).toLocaleDateString()}</p>
+                          </div>
+                          <div className="col-span-2">
+                            <p className="text-white/40 text-xs">Contact</p>
+                            <p className="text-white/70 mt-0.5 text-xs truncate">{artist.email}</p>
+                            {artist.phone && <p className="text-white/50 text-[11px]">{artist.phone}</p>}
+                          </div>
+                        </div>
+                        <div className="flex flex-wrap items-center gap-2 border-t border-white/[0.04] pt-3">
+                          {(artist as any).isVerified ? (
+                            <button
+                              onClick={async () => {
+                                const token = localStorage.getItem("token");
+                                await fetch("/api/admin/users", {
+                                  method: "PUT",
+                                  headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+                                  body: JSON.stringify({ userId: artist._id, action: "unverify", type: "artist" })
+                                });
+                                fetchData();
+                              }}
+                              className="flex-1 min-h-[44px] flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl bg-yellow-500/20 text-yellow-400 hover:bg-yellow-500/30 text-xs font-semibold"
+                            >
+                              <XCircle className="w-4 h-4" /> Unverify
+                            </button>
+                          ) : (
+                            <button
+                              onClick={async () => {
+                                const token = localStorage.getItem("token");
+                                await fetch("/api/admin/users", {
+                                  method: "PUT",
+                                  headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+                                  body: JSON.stringify({ userId: artist._id, action: "verify", type: "artist" })
+                                });
+                                fetchData();
+                              }}
+                              className="flex-1 min-h-[44px] flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl bg-green-500/20 text-green-400 hover:bg-green-500/30 text-xs font-semibold"
+                            >
+                              <CheckCircle className="w-4 h-4" /> Verify
+                            </button>
+                          )}
+                          {artist.image && (
+                            <button
+                              onClick={async () => {
+                                const token = localStorage.getItem("token");
+                                if (!confirm("Delete this artist's profile picture?")) return;
+                                const res = await fetch("/api/admin/users", {
+                                  method: "PUT",
+                                  headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+                                  body: JSON.stringify({ userId: artist._id, action: "deleteProfileImage", type: "artist" })
+                                });
+                                const data = await res.json();
+                                if (data.success) fetchData();
+                              }}
+                              className="min-w-[44px] min-h-[44px] flex items-center justify-center p-2.5 rounded-xl bg-red-500/10 text-red-400 hover:bg-red-500/30 text-xs font-medium"
+                              title="Delete Profile Picture"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          )}
+                          <button
+                            onClick={() => handleViewProfile(artist._id, "artist")}
+                            className="min-w-[44px] min-h-[44px] flex items-center justify-center p-2.5 rounded-xl bg-white/[0.04] hover:bg-white/[0.08] text-white/50 hover:text-white"
+                            title="View"
+                          >
+                            <Eye className="w-4 h-4" />
+                          </button>
+                          <button
+                            onClick={() => handleDelete(artist._id, "artist")}
+                            className="min-w-[44px] min-h-[44px] flex items-center justify-center p-2.5 rounded-xl bg-red-500/20 hover:bg-red-500/30 text-white/50 hover:text-red-400"
+                            title="Delete"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               ) : (
                 <div className="text-center py-20 glass-card">
@@ -594,69 +710,133 @@ export default function AdminDashboard() {
                   <div className="w-10 h-10 border-2 border-brand-orange/30 border-t-brand-orange rounded-full animate-spin" />
                 </div>
               ) : partners.length > 0 ? (
-                <div className="overflow-x-auto">
-                  <table className="w-full">
-                    <thead>
-                      <tr className="border-b border-white/[0.06]">
-                        <th className="text-left py-4 px-4 text-white/50 text-sm font-medium">Name</th>
-                        <th className="text-left py-4 px-4 text-white/50 text-sm font-medium">Email</th>
-                        <th className="text-left py-4 px-4 text-white/50 text-sm font-medium">Phone</th>
-                        <th className="text-left py-4 px-4 text-white/50 text-sm font-medium">Location</th>
-                        <th className="text-left py-4 px-4 text-white/50 text-sm font-medium">Registered</th>
-                        <th className="text-left py-4 px-4 text-white/50 text-sm font-medium">Actions</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {partners.map((partner) => (
-                        <tr key={partner._id} className="border-b border-white/[0.04] hover:bg-white/[0.02]">
-                          <td className="py-4 px-4 text-white font-medium">{partner.name}</td>
-                          <td className="py-4 px-4 text-white/70">{partner.email}</td>
-                          <td className="py-4 px-4 text-white/70">{partner.phone || "-"}</td>
-                          <td className="py-4 px-4 text-white/70">{partner.location || "-"}</td>
-                          <td className="py-4 px-4 text-white/50 text-sm">
-                            {new Date(partner.createdAt).toLocaleDateString()}
-                          </td>
-                          <td className="py-4 px-4">
-                            <div className="flex items-center gap-2">
-                              {(partner as any).profileImage && (
+                <div>
+                  {/* Desktop View */}
+                  <div className="overflow-x-auto hidden md:block">
+                    <table className="w-full">
+                      <thead>
+                        <tr className="border-b border-white/[0.06]">
+                          <th className="text-left py-4 px-4 text-white/50 text-sm font-medium">Name</th>
+                          <th className="text-left py-4 px-4 text-white/50 text-sm font-medium">Email</th>
+                          <th className="text-left py-4 px-4 text-white/50 text-sm font-medium">Phone</th>
+                          <th className="text-left py-4 px-4 text-white/50 text-sm font-medium">Location</th>
+                          <th className="text-left py-4 px-4 text-white/50 text-sm font-medium">Registered</th>
+                          <th className="text-left py-4 px-4 text-white/50 text-sm font-medium">Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {partners.map((partner) => (
+                          <tr key={partner._id} className="border-b border-white/[0.04] hover:bg-white/[0.02]">
+                            <td className="py-4 px-4 text-white font-medium">{partner.name}</td>
+                            <td className="py-4 px-4 text-white/70">{partner.email}</td>
+                            <td className="py-4 px-4 text-white/70">{partner.phone || "-"}</td>
+                            <td className="py-4 px-4 text-white/70">{partner.location || "-"}</td>
+                            <td className="py-4 px-4 text-white/50 text-sm">
+                              {new Date(partner.createdAt).toLocaleDateString()}
+                            </td>
+                            <td className="py-4 px-4">
+                              <div className="flex items-center gap-2">
+                                {(partner as any).profileImage && (
+                                  <button
+                                    onClick={async () => {
+                                      const token = localStorage.getItem("token");
+                                      if (!confirm("Delete this partner's profile picture?")) return;
+                                      const res = await fetch("/api/admin/users", {
+                                        method: "PUT",
+                                        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+                                        body: JSON.stringify({ userId: partner._id, action: "deleteProfileImage", type: "partner" })
+                                      });
+                                      const data = await res.json();
+                                      if (data.success) fetchData();
+                                    }}
+                                    className="p-2 rounded-lg bg-red-500/10 text-red-400 hover:bg-red-500/30"
+                                    title="Delete Profile Picture"
+                                  >
+                                    <Trash2 className="w-4 h-4" />
+                                  </button>
+                                )}
                                 <button
-                                  onClick={async () => {
-                                    const token = localStorage.getItem("token");
-                                    if (!confirm("Delete this partner's profile picture?")) return;
-                                    const res = await fetch("/api/admin/users", {
-                                      method: "PUT",
-                                      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-                                      body: JSON.stringify({ userId: partner._id, action: "deleteProfileImage", type: "partner" })
-                                    });
-                                    const data = await res.json();
-                                    if (data.success) fetchData();
-                                  }}
-                                  className="p-2 rounded-lg bg-red-500/10 text-red-400 hover:bg-red-500/30"
-                                  title="Delete Profile Picture"
+                                  onClick={() => handleViewProfile(partner._id, "partner")}
+                                  className="p-2 rounded-lg bg-white/[0.04] hover:bg-white/[0.08] text-white/50 hover:text-white"
+                                  title="View"
+                                >
+                                  <Eye className="w-4 h-4" />
+                                </button>
+                                <button
+                                  onClick={() => handleDelete(partner._id, "partner")}
+                                  className="p-2 rounded-lg hover:bg-red-500/20 text-white/50 hover:text-red-400"
+                                  title="Delete"
                                 >
                                   <Trash2 className="w-4 h-4" />
                                 </button>
-                              )}
-                              <button
-                                onClick={() => handleViewProfile(partner._id, "partner")}
-                                className="p-2 rounded-lg bg-white/[0.04] hover:bg-white/[0.08] text-white/50 hover:text-white"
-                                title="View"
-                              >
-                                <Eye className="w-4 h-4" />
-                              </button>
-                              <button
-                                onClick={() => handleDelete(partner._id, "partner")}
-                                className="p-2 rounded-lg hover:bg-red-500/20 text-white/50 hover:text-red-400"
-                                title="Delete"
-                              >
-                                <Trash2 className="w-4 h-4" />
-                              </button>
-                            </div>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+
+                  {/* Mobile View */}
+                  <div className="grid grid-cols-1 gap-4 md:hidden">
+                    {partners.map((partner) => (
+                      <div key={partner._id} className="glass-card p-4 space-y-4">
+                        <div>
+                          <h4 className="text-white font-medium text-base">{partner.name}</h4>
+                          <p className="text-white/40 text-xs truncate mt-0.5">{partner.email}</p>
+                        </div>
+                        <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm border-t border-white/[0.04] pt-3">
+                          <div>
+                            <p className="text-white/40 text-xs">Phone</p>
+                            <p className="text-white/70 mt-0.5">{partner.phone || "-"}</p>
+                          </div>
+                          <div>
+                            <p className="text-white/40 text-xs">Location</p>
+                            <p className="text-white/70 mt-0.5">{partner.location || "-"}</p>
+                          </div>
+                          <div>
+                            <p className="text-white/40 text-xs">Registered</p>
+                            <p className="text-white/70 mt-0.5">{new Date(partner.createdAt).toLocaleDateString()}</p>
+                          </div>
+                        </div>
+                        <div className="flex items-center justify-end gap-2 border-t border-white/[0.04] pt-3">
+                          {(partner as any).profileImage && (
+                            <button
+                              onClick={async () => {
+                                const token = localStorage.getItem("token");
+                                if (!confirm("Delete this partner's profile picture?")) return;
+                                const res = await fetch("/api/admin/users", {
+                                  method: "PUT",
+                                  headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+                                  body: JSON.stringify({ userId: partner._id, action: "deleteProfileImage", type: "partner" })
+                                });
+                                const data = await res.json();
+                                if (data.success) fetchData();
+                              }}
+                              className="min-w-[44px] min-h-[44px] flex items-center justify-center p-2.5 rounded-xl bg-red-500/10 text-red-400 hover:bg-red-500/30"
+                              title="Delete Profile Picture"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          )}
+                          <button
+                            onClick={() => handleViewProfile(partner._id, "partner")}
+                            className="min-w-[44px] min-h-[44px] flex items-center justify-center p-2.5 rounded-xl bg-white/[0.04] hover:bg-white/[0.08] text-white/50 hover:text-white"
+                            title="View"
+                          >
+                            <Eye className="w-4 h-4" />
+                          </button>
+                          <button
+                            onClick={() => handleDelete(partner._id, "partner")}
+                            className="min-w-[44px] min-h-[44px] flex items-center justify-center p-2.5 rounded-xl bg-red-500/20 hover:bg-red-500/30 text-white/50 hover:text-red-400"
+                            title="Delete"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               ) : (
                 <div className="text-center py-20 glass-card">
@@ -673,194 +853,384 @@ export default function AdminDashboard() {
                   <div className="w-10 h-10 border-2 border-brand-orange/30 border-t-brand-orange rounded-full animate-spin" />
                 </div>
               ) : bookings.length > 0 ? (
-                <div className="overflow-x-auto">
-                  <table className="w-full">
-                    <thead>
-                      <tr className="border-b border-white/[0.06]">
-                        <th className="text-left py-4 px-4 text-white/50 text-sm font-medium">Event</th>
-                        <th className="text-left py-4 px-4 text-white/50 text-sm font-medium">Artist</th>
-                        <th className="text-left py-4 px-4 text-white/50 text-sm font-medium">Organizer</th>
-                        <th className="text-left py-4 px-4 text-white/50 text-sm font-medium">Date/Venue</th>
-                        <th className="text-left py-4 px-4 text-white/50 text-sm font-medium">Amount</th>
-                        <th className="text-left py-4 px-4 text-white/50 text-sm font-medium">Status</th>
-                        <th className="text-left py-4 px-4 text-white/50 text-sm font-medium">Payment</th>
-                        <th className="text-left py-4 px-4 text-white/50 text-sm font-medium">Actions</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {bookings.map((booking) => (
-                        <tr key={booking._id} className="border-b border-white/[0.04] hover:bg-white/[0.02]">
-                          <td className="py-4 px-4 text-white font-medium">{booking.eventName}</td>
-                          <td className="py-4 px-4">
-                            <div className="flex items-center gap-3">
-                              {booking.artistId?.image && (
-                                <div className="w-8 h-8 rounded-full overflow-hidden relative">
-                                  <Image src={booking.artistId.image} alt="" fill className="object-cover" />
-                                </div>
-                              )}
-                              <span className="text-white/70">{booking.artistId?.name || "N/A"}</span>
-                            </div>
-                          </td>
-                          <td className="py-4 px-4 text-white/70">{booking.organizerEmail}</td>
-                          <td className="py-4 px-4 text-white/70">
-                            {booking.acceptedDate
-                              ? `${new Date(booking.acceptedDate).toLocaleDateString()}${booking.acceptedVenue ? ` @ ${booking.acceptedVenue}` : ""}`
-                              : booking.date
-                                ? new Date(booking.date).toLocaleDateString()
-                                : "TBD"}
-                          </td>
-                          <td className="py-4 px-4 text-white/70">₹{booking.budget?.toLocaleString()}</td>
-                          <td className="py-4 px-4">
-                            <span className={`px-2 py-1 rounded-full text-xs ${
-                              booking.status === "completed" ? "bg-green-500/20 text-green-400" :
-                              booking.status === "confirmed" ? "bg-green-500/20 text-green-400" :
-                              booking.status === "accepted" ? "bg-blue-500/20 text-blue-400" :
-                              booking.status === "awaiting_confirmation" ? "bg-purple-500/20 text-purple-400" :
-                              booking.status === "pending" ? "bg-yellow-500/20 text-yellow-400" :
-                              "bg-red-500/20 text-red-400"
-                            }`}>
-                              {booking.status === "awaiting_confirmation" ? "Verify Payment" :
-                               booking.status === "confirmed" ? "Confirmed" : booking.status}
-                            </span>
-                          </td>
-                          <td className="py-4 px-4">
-                            <div className="flex flex-col gap-1 text-xs">
-                              {booking.paymentType && (booking.status === "awaiting_confirmation" || booking.status === "confirmed") && (
-                                <span className="text-brand-orange">{booking.paymentType === "advance" ? "30% Advance" : "Full Payment"}</span>
-                              )}
-                              {booking.organizerPaidAdmin && (
-                                <span className="text-green-400">Org Paid Admin ✓</span>
-                              )}
-                              {booking.adminPaidArtist && (
-                                <span className="text-green-400">Admin Paid Artist ✓</span>
-                              )}
-                              {!booking.organizerPaidAdmin && booking.status === "accepted" && (
-                                <span className="text-orange-400">Awaiting Org Payment</span>
-                              )}
-                              {booking.status === "awaiting_confirmation" && (
-                                <span className="text-purple-400">Proof Submitted</span>
-                              )}
-                            </div>
-                          </td>
-                          <td className="py-4 px-4">
-                            <div className="flex items-center gap-2">
-                              {/* Payment Verification - Approve/Reject */}
-                              {booking.status === "awaiting_confirmation" && (
-                                <>
-                                  {booking.paymentProof?.screenshot && (
+                <div>
+                  {/* Desktop View */}
+                  <div className="overflow-x-auto hidden md:block">
+                    <table className="w-full">
+                      <thead>
+                        <tr className="border-b border-white/[0.06]">
+                          <th className="text-left py-4 px-4 text-white/50 text-sm font-medium">Event</th>
+                          <th className="text-left py-4 px-4 text-white/50 text-sm font-medium">Artist</th>
+                          <th className="text-left py-4 px-4 text-white/50 text-sm font-medium">Organizer</th>
+                          <th className="text-left py-4 px-4 text-white/50 text-sm font-medium">Date/Venue</th>
+                          <th className="text-left py-4 px-4 text-white/50 text-sm font-medium">Amount</th>
+                          <th className="text-left py-4 px-4 text-white/50 text-sm font-medium">Status</th>
+                          <th className="text-left py-4 px-4 text-white/50 text-sm font-medium">Payment</th>
+                          <th className="text-left py-4 px-4 text-white/50 text-sm font-medium">Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {bookings.map((booking) => (
+                          <tr key={booking._id} className="border-b border-white/[0.04] hover:bg-white/[0.02]">
+                            <td className="py-4 px-4 text-white font-medium">{booking.eventName}</td>
+                            <td className="py-4 px-4">
+                              <div className="flex items-center gap-3">
+                                {booking.artistId?.image && (
+                                  <div className="w-8 h-8 rounded-full overflow-hidden relative">
+                                    <Image src={booking.artistId.image} alt="" fill className="object-cover" />
+                                  </div>
+                                )}
+                                <span className="text-white/70">{booking.artistId?.name || "N/A"}</span>
+                              </div>
+                            </td>
+                            <td className="py-4 px-4 text-white/70">{booking.organizerEmail}</td>
+                            <td className="py-4 px-4 text-white/70">
+                              {booking.acceptedDate
+                                ? `${new Date(booking.acceptedDate).toLocaleDateString()}${booking.acceptedVenue ? ` @ ${booking.acceptedVenue}` : ""}`
+                                : booking.date
+                                  ? new Date(booking.date).toLocaleDateString()
+                                  : "TBD"}
+                            </td>
+                            <td className="py-4 px-4 text-white/70">₹{booking.budget?.toLocaleString()}</td>
+                            <td className="py-4 px-4">
+                              <span className={`px-2 py-1 rounded-full text-xs ${
+                                booking.status === "completed" ? "bg-green-500/20 text-green-400" :
+                                booking.status === "confirmed" ? "bg-green-500/20 text-green-400" :
+                                booking.status === "accepted" ? "bg-blue-500/20 text-blue-400" :
+                                booking.status === "awaiting_confirmation" ? "bg-purple-500/20 text-purple-400" :
+                                booking.status === "pending" ? "bg-yellow-500/20 text-yellow-400" :
+                                "bg-red-500/20 text-red-400"
+                              }`}>
+                                {booking.status === "awaiting_confirmation" ? "Verify Payment" :
+                                 booking.status === "confirmed" ? "Confirmed" : booking.status}
+                              </span>
+                            </td>
+                            <td className="py-4 px-4">
+                              <div className="flex flex-col gap-1 text-xs">
+                                {booking.paymentType && (booking.status === "awaiting_confirmation" || booking.status === "confirmed") && (
+                                  <span className="text-brand-orange">{booking.paymentType === "advance" ? "30% Advance" : "Full Payment"}</span>
+                                )}
+                                {booking.organizerPaidAdmin && (
+                                  <span className="text-green-400">Org Paid Admin ✓</span>
+                                )}
+                                {booking.adminPaidArtist && (
+                                  <span className="text-green-400">Admin Paid Artist ✓</span>
+                                )}
+                                {!booking.organizerPaidAdmin && booking.status === "accepted" && (
+                                  <span className="text-orange-400">Awaiting Org Payment</span>
+                                )}
+                                {booking.status === "awaiting_confirmation" && (
+                                  <span className="text-purple-400">Proof Submitted</span>
+                                )}
+                              </div>
+                            </td>
+                            <td className="py-4 px-4">
+                              <div className="flex items-center gap-2">
+                                {/* Payment Verification - Approve/Reject */}
+                                {booking.status === "awaiting_confirmation" && (
+                                  <>
+                                    {booking.paymentProof?.screenshot && (
+                                      <button
+                                        onClick={() => window.open(booking.paymentProof.screenshot, "_blank")}
+                                        className="px-2 py-1.5 rounded-lg bg-white/[0.06] text-white/60 hover:text-white text-xs"
+                                        title="View payment proof"
+                                      >
+                                        <Eye className="w-3.5 h-3.5" />
+                                      </button>
+                                    )}
                                     <button
-                                      onClick={() => window.open(booking.paymentProof.screenshot, "_blank")}
-                                      className="px-2 py-1.5 rounded-lg bg-white/[0.06] text-white/60 hover:text-white text-xs"
-                                      title="View payment proof"
+                                      onClick={async () => {
+                                        const token = localStorage.getItem("token");
+                                        if (!confirm("Confirm payment and approve booking?")) return;
+                                        const res = await fetch("/api/partner/bookings", {
+                                          method: "PUT",
+                                          headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+                                          body: JSON.stringify({ bookingId: booking._id, action: "adminConfirmPayment" })
+                                        });
+                                        const data = await res.json();
+                                        if (data.success) fetchData();
+                                      }}
+                                      className="px-3 py-1.5 rounded-lg bg-green-500/20 text-green-400 hover:bg-green-500/30 text-xs font-medium"
+                                      title="Approve payment"
                                     >
-                                      <Eye className="w-3.5 h-3.5" />
+                                      <CheckCircle className="w-3.5 h-3.5 inline mr-1" /> Approve
                                     </button>
-                                  )}
+                                    <button
+                                      onClick={async () => {
+                                        const token = localStorage.getItem("token");
+                                        if (!confirm("Reject this payment proof?")) return;
+                                        const res = await fetch("/api/partner/bookings", {
+                                          method: "PUT",
+                                          headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+                                          body: JSON.stringify({ bookingId: booking._id, action: "adminRejectPayment" })
+                                        });
+                                        const data = await res.json();
+                                        if (data.success) fetchData();
+                                      }}
+                                      className="px-3 py-1.5 rounded-lg bg-red-500/20 text-red-400 hover:bg-red-500/30 text-xs font-medium"
+                                      title="Reject payment"
+                                    >
+                                      <XCircle className="w-3.5 h-3.5 inline mr-1" /> Reject
+                                    </button>
+                                  </>
+                                )}
+
+                                {/* Confirmed Full Payment - Pay Artist button */}
+                                {booking.status === "confirmed" && booking.paymentType === "full" && !booking.adminPaidArtist && (
                                   <button
                                     onClick={async () => {
                                       const token = localStorage.getItem("token");
-                                      if (!confirm("Confirm payment and approve booking?")) return;
+                                      if (!confirm(`Release ₹${(booking.artistPayout || booking.basePrice || 0).toLocaleString()} to artist?`)) return;
                                       const res = await fetch("/api/partner/bookings", {
                                         method: "PUT",
                                         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-                                        body: JSON.stringify({ bookingId: booking._id, action: "adminConfirmPayment" })
+                                        body: JSON.stringify({ bookingId: booking._id, action: "adminPaysArtist" })
                                       });
                                       const data = await res.json();
                                       if (data.success) fetchData();
                                     }}
                                     className="px-3 py-1.5 rounded-lg bg-green-500/20 text-green-400 hover:bg-green-500/30 text-xs font-medium"
-                                    title="Approve payment"
+                                    title="Release payment to artist"
                                   >
-                                    <CheckCircle className="w-3.5 h-3.5 inline mr-1" /> Approve
+                                    Pay Artist
                                   </button>
+                                )}
+
+                                {/* Confirmed Full Payment - Done */}
+                                {booking.status === "confirmed" && booking.paymentType === "full" && booking.adminPaidArtist && (
+                                  <span className="px-2 py-1.5 rounded-lg bg-green-500/10 text-green-400 text-xs">
+                                    Payment done. Check your bank.
+                                  </span>
+                                )}
+
+                                {/* Confirmed Advance Payment - Ask rest */}
+                                {booking.status === "confirmed" && booking.paymentType === "advance" && (
+                                  <span className="px-2 py-1.5 rounded-lg bg-brand-orange/10 text-brand-orange text-xs max-w-[200px]">
+                                    Advance received. Ask rest ₹{((booking.finalPrice || 0) - (booking.advanceAmount || Math.round((booking.finalPrice || 0) * 0.3))).toLocaleString()} from organizer before show.
+                                  </span>
+                                )}
+
+                                {/* Admin Pays Artist button (for old flow) */}
+                                {booking.organizerPaidAdmin && !booking.adminPaidArtist && booking.status === "accepted" && (
                                   <button
                                     onClick={async () => {
                                       const token = localStorage.getItem("token");
-                                      if (!confirm("Reject this payment proof?")) return;
+                                      if (!confirm(`Release ₹${(booking.artistPayout || booking.basePrice || 0).toLocaleString()} to artist?`)) return;
                                       const res = await fetch("/api/partner/bookings", {
                                         method: "PUT",
                                         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-                                        body: JSON.stringify({ bookingId: booking._id, action: "adminRejectPayment" })
+                                        body: JSON.stringify({ bookingId: booking._id, action: "adminPaysArtist" })
                                       });
                                       const data = await res.json();
                                       if (data.success) fetchData();
                                     }}
-                                    className="px-3 py-1.5 rounded-lg bg-red-500/20 text-red-400 hover:bg-red-500/30 text-xs font-medium"
-                                    title="Reject payment"
+                                    className="px-3 py-1.5 rounded-lg bg-green-500/20 text-green-400 hover:bg-green-500/30 text-xs font-medium"
+                                    title="Release payment to artist"
                                   >
-                                    <XCircle className="w-3.5 h-3.5 inline mr-1" /> Reject
+                                    Pay Artist
                                   </button>
-                                </>
-                              )}
-
-                              {/* Confirmed Full Payment - Pay Artist button */}
-                              {booking.status === "confirmed" && booking.paymentType === "full" && !booking.adminPaidArtist && (
+                                )}
                                 <button
-                                  onClick={async () => {
-                                    const token = localStorage.getItem("token");
-                                    if (!confirm(`Release ₹${(booking.artistPayout || booking.basePrice || 0).toLocaleString()} to artist?`)) return;
-                                    const res = await fetch("/api/partner/bookings", {
-                                      method: "PUT",
-                                      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-                                      body: JSON.stringify({ bookingId: booking._id, action: "adminPaysArtist" })
-                                    });
-                                    const data = await res.json();
-                                    if (data.success) fetchData();
-                                  }}
-                                  className="px-3 py-1.5 rounded-lg bg-green-500/20 text-green-400 hover:bg-green-500/30 text-xs font-medium"
-                                  title="Release payment to artist"
+                                  onClick={() => handleDelete(booking._id, "booking")}
+                                  className="p-2 rounded-lg hover:bg-red-500/20 text-white/50 hover:text-red-400"
+                                  title="Delete"
                                 >
-                                  Pay Artist
+                                  <Trash2 className="w-4 h-4" />
                                 </button>
-                              )}
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
 
-                              {/* Confirmed Full Payment - Done */}
-                              {booking.status === "confirmed" && booking.paymentType === "full" && booking.adminPaidArtist && (
-                                <span className="px-2 py-1.5 rounded-lg bg-green-500/10 text-green-400 text-xs">
-                                  Payment done. Check your bank.
-                                </span>
-                              )}
+                  {/* Mobile View */}
+                  <div className="grid grid-cols-1 gap-4 md:hidden">
+                    {bookings.map((booking) => (
+                      <div key={booking._id} className="glass-card p-4 space-y-4">
+                        <div className="flex items-start justify-between gap-4">
+                          <div>
+                            <h4 className="text-white font-semibold text-base">{booking.eventName}</h4>
+                            <p className="text-white/40 text-xs mt-0.5">Org: {booking.organizerEmail}</p>
+                          </div>
+                          <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${
+                            booking.status === "completed" ? "bg-green-500/20 text-green-400" :
+                            booking.status === "confirmed" ? "bg-green-500/20 text-green-400" :
+                            booking.status === "accepted" ? "bg-blue-500/20 text-blue-400" :
+                            booking.status === "awaiting_confirmation" ? "bg-purple-500/20 text-purple-400" :
+                            booking.status === "pending" ? "bg-yellow-500/20 text-yellow-400" :
+                            "bg-red-500/20 text-red-400"
+                          }`}>
+                            {booking.status === "awaiting_confirmation" ? "Verify Payment" :
+                             booking.status === "confirmed" ? "Confirmed" : booking.status}
+                          </span>
+                        </div>
 
-                              {/* Confirmed Advance Payment - Ask rest */}
-                              {booking.status === "confirmed" && booking.paymentType === "advance" && (
-                                <span className="px-2 py-1.5 rounded-lg bg-brand-orange/10 text-brand-orange text-xs max-w-[200px]">
-                                  Advance received. Ask rest ₹{((booking.finalPrice || 0) - (booking.advanceAmount || Math.round((booking.finalPrice || 0) * 0.3))).toLocaleString()} from organizer before show.
-                                </span>
+                        <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm border-t border-white/[0.04] pt-3">
+                          <div>
+                            <p className="text-white/40 text-xs">Artist</p>
+                            <div className="flex items-center gap-2 mt-1">
+                              {booking.artistId?.image && (
+                                <div className="w-6 h-6 rounded-full overflow-hidden relative shrink-0">
+                                  <Image src={booking.artistId.image} alt="" fill className="object-cover" />
+                                </div>
                               )}
+                              <span className="text-white/70 truncate text-xs">{booking.artistId?.name || "N/A"}</span>
+                            </div>
+                          </div>
+                          <div>
+                            <p className="text-white/40 text-xs">Amount</p>
+                            <p className="text-white font-medium mt-1">₹{booking.budget?.toLocaleString()}</p>
+                          </div>
+                          <div className="col-span-2">
+                            <p className="text-white/40 text-xs">Date & Venue</p>
+                            <p className="text-white/70 mt-0.5 text-xs">
+                              {booking.acceptedDate
+                                ? `${new Date(booking.acceptedDate).toLocaleDateString()}${booking.acceptedVenue ? ` @ ${booking.acceptedVenue}` : ""}`
+                                : booking.date
+                                  ? new Date(booking.date).toLocaleDateString()
+                                  : "TBD"}
+                            </p>
+                          </div>
+                          <div className="col-span-2">
+                            <p className="text-white/40 text-xs">Payment Information</p>
+                            <div className="flex flex-col gap-1 mt-1 text-xs">
+                              {booking.paymentType && (booking.status === "awaiting_confirmation" || booking.status === "confirmed") && (
+                                <span className="text-brand-orange">{booking.paymentType === "advance" ? "30% Advance" : "Full Payment"}</span>
+                              )}
+                              {booking.organizerPaidAdmin && (
+                                <span className="text-green-400 font-medium">Organizer Paid Admin ✓</span>
+                              )}
+                              {booking.adminPaidArtist && (
+                                <span className="text-green-400 font-medium">Admin Paid Artist ✓</span>
+                              )}
+                              {!booking.organizerPaidAdmin && booking.status === "accepted" && (
+                                <span className="text-orange-400">Awaiting Organizer Payment</span>
+                              )}
+                              {booking.status === "awaiting_confirmation" && (
+                                <span className="text-purple-400">Proof Submitted</span>
+                              )}
+                            </div>
+                          </div>
+                        </div>
 
-                              {/* Admin Pays Artist button (for old flow) */}
-                              {booking.organizerPaidAdmin && !booking.adminPaidArtist && booking.status === "accepted" && (
+                        <div className="flex flex-wrap items-center gap-2 border-t border-white/[0.04] pt-3">
+                          {/* Payment Verification - Approve/Reject */}
+                          {booking.status === "awaiting_confirmation" && (
+                            <>
+                              {booking.paymentProof?.screenshot && (
                                 <button
-                                  onClick={async () => {
-                                    const token = localStorage.getItem("token");
-                                    if (!confirm(`Release ₹${(booking.artistPayout || booking.basePrice || 0).toLocaleString()} to artist?`)) return;
-                                    const res = await fetch("/api/partner/bookings", {
-                                      method: "PUT",
-                                      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-                                      body: JSON.stringify({ bookingId: booking._id, action: "adminPaysArtist" })
-                                    });
-                                    const data = await res.json();
-                                    if (data.success) fetchData();
-                                  }}
-                                  className="px-3 py-1.5 rounded-lg bg-green-500/20 text-green-400 hover:bg-green-500/30 text-xs font-medium"
-                                  title="Release payment to artist"
+                                  onClick={() => window.open(booking.paymentProof.screenshot, "_blank")}
+                                  className="min-h-[44px] px-3 py-2 rounded-xl bg-white/[0.06] text-white/60 hover:text-white text-xs flex items-center gap-1.5"
+                                  title="View payment proof"
                                 >
-                                  Pay Artist
+                                  <Eye className="w-4 h-4" /> View Proof
                                 </button>
                               )}
                               <button
-                                onClick={() => handleDelete(booking._id, "booking")}
-                                className="p-2 rounded-lg hover:bg-red-500/20 text-white/50 hover:text-red-400"
-                                title="Delete"
+                                onClick={async () => {
+                                  const token = localStorage.getItem("token");
+                                  if (!confirm("Confirm payment and approve booking?")) return;
+                                  const res = await fetch("/api/partner/bookings", {
+                                    method: "PUT",
+                                    headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+                                    body: JSON.stringify({ bookingId: booking._id, action: "adminConfirmPayment" })
+                                  });
+                                  const data = await res.json();
+                                  if (data.success) fetchData();
+                                }}
+                                className="flex-1 min-h-[44px] flex items-center justify-center gap-1 px-3 py-2 rounded-xl bg-green-500/20 text-green-400 hover:bg-green-500/30 text-xs font-semibold"
+                                title="Approve payment"
                               >
-                                <Trash2 className="w-4 h-4" />
+                                <CheckCircle className="w-4 h-4" /> Approve
                               </button>
-                            </div>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                              <button
+                                onClick={async () => {
+                                  const token = localStorage.getItem("token");
+                                  if (!confirm("Reject this payment proof?")) return;
+                                  const res = await fetch("/api/partner/bookings", {
+                                    method: "PUT",
+                                    headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+                                    body: JSON.stringify({ bookingId: booking._id, action: "adminRejectPayment" })
+                                  });
+                                  const data = await res.json();
+                                  if (data.success) fetchData();
+                                }}
+                                className="flex-1 min-h-[44px] flex items-center justify-center gap-1 px-3 py-2 rounded-xl bg-red-500/20 text-red-400 hover:bg-red-500/30 text-xs font-semibold"
+                                title="Reject payment"
+                              >
+                                <XCircle className="w-4 h-4" /> Reject
+                              </button>
+                            </>
+                          )}
+
+                          {/* Confirmed Full Payment - Pay Artist button */}
+                          {booking.status === "confirmed" && booking.paymentType === "full" && !booking.adminPaidArtist && (
+                            <button
+                              onClick={async () => {
+                                const token = localStorage.getItem("token");
+                                if (!confirm(`Release ₹${(booking.artistPayout || booking.basePrice || 0).toLocaleString()} to artist?`)) return;
+                                const res = await fetch("/api/partner/bookings", {
+                                  method: "PUT",
+                                  headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+                                  body: JSON.stringify({ bookingId: booking._id, action: "adminPaysArtist" })
+                                });
+                                const data = await res.json();
+                                if (data.success) fetchData();
+                              }}
+                              className="flex-1 min-h-[44px] flex items-center justify-center gap-1 px-3 py-2 rounded-xl bg-green-500/20 text-green-400 hover:bg-green-500/30 text-xs font-semibold"
+                              title="Release payment to artist"
+                            >
+                              Pay Artist
+                            </button>
+                          )}
+
+                          {/* Confirmed Full Payment - Done */}
+                          {booking.status === "confirmed" && booking.paymentType === "full" && booking.adminPaidArtist && (
+                            <span className="flex-1 min-h-[44px] flex items-center justify-center px-3 py-2 rounded-xl bg-green-500/10 text-green-400 text-xs text-center">
+                              Payment done. Check your bank.
+                            </span>
+                          )}
+
+                          {/* Confirmed Advance Payment - Ask rest */}
+                          {booking.status === "confirmed" && booking.paymentType === "advance" && (
+                            <span className="flex-1 min-h-[44px] flex items-center justify-center px-3 py-2 rounded-xl bg-brand-orange/10 text-brand-orange text-xs text-center leading-tight">
+                              Advance received. Ask rest before show.
+                            </span>
+                          )}
+
+                          {/* Admin Pays Artist button (for old flow) */}
+                          {booking.organizerPaidAdmin && !booking.adminPaidArtist && booking.status === "accepted" && (
+                            <button
+                              onClick={async () => {
+                                const token = localStorage.getItem("token");
+                                if (!confirm(`Release ₹${(booking.artistPayout || booking.basePrice || 0).toLocaleString()} to artist?`)) return;
+                                const res = await fetch("/api/partner/bookings", {
+                                  method: "PUT",
+                                  headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+                                  body: JSON.stringify({ bookingId: booking._id, action: "adminPaysArtist" })
+                                });
+                                const data = await res.json();
+                                if (data.success) fetchData();
+                              }}
+                              className="flex-1 min-h-[44px] flex items-center justify-center gap-1 px-3 py-2 rounded-xl bg-green-500/20 text-green-400 hover:bg-green-500/30 text-xs font-semibold"
+                              title="Release payment to artist"
+                            >
+                              Pay Artist
+                            </button>
+                          )}
+                          <button
+                            onClick={() => handleDelete(booking._id, "booking")}
+                            className="min-w-[44px] min-h-[44px] flex items-center justify-center p-2.5 rounded-xl bg-red-500/20 hover:bg-red-500/30 text-white/50 hover:text-red-400 ml-auto"
+                            title="Delete"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               ) : (
                 <div className="text-center py-20 glass-card">
@@ -967,62 +1337,110 @@ export default function AdminDashboard() {
                   <div className="w-10 h-10 border-2 border-brand-orange/30 border-t-brand-orange rounded-full animate-spin" />
                 </div>
               ) : allSessions.length > 0 ? (
-                <div className="overflow-x-auto">
-                  <table className="w-full">
-                    <thead>
-                      <tr className="border-b border-white/[0.06]">
-                        <th className="text-left py-4 px-4 text-white/50 text-sm font-medium">#</th>
-                        <th className="text-left py-4 px-4 text-white/50 text-sm font-medium">Device</th>
-                        <th className="text-left py-4 px-4 text-white/50 text-sm font-medium">IP Address</th>
-                        <th className="text-left py-4 px-4 text-white/50 text-sm font-medium">Logged In</th>
-                        <th className="text-left py-4 px-4 text-white/50 text-sm font-medium">Last Active</th>
-                        <th className="text-left py-4 px-4 text-white/50 text-sm font-medium">Actions</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {allSessions.map((session: any, idx: number) => (
-                        <tr key={session._id} className="border-b border-white/[0.04] hover:bg-white/[0.02]">
-                          <td className="py-4 px-4 text-white/50 text-sm">{idx + 1}</td>
-                          <td className="py-4 px-4 text-white/70 text-sm max-w-[300px] truncate" title={session.deviceInfo}>
-                            {session.deviceInfo}
-                          </td>
-                          <td className="py-4 px-4 text-white/70 text-sm">{session.ipAddress}</td>
-                          <td className="py-4 px-4 text-white/50 text-sm">{new Date(session.createdAt).toLocaleString()}</td>
-                          <td className="py-4 px-4 text-white/50 text-sm">{new Date(session.lastActive).toLocaleString()}</td>
-                          <td className="py-4 px-4">
-                            <button
-                              onClick={async () => {
-                                const token = localStorage.getItem("token");
-                                if (!confirm("Terminate this session? The user will be logged out.")) return;
-                                const res = await fetch(`/api/sessions?sessionId=${session._id}`, {
-                                  method: "DELETE",
-                                  headers: { Authorization: `Bearer ${token}` }
-                                });
-                                const data = await res.json();
-                                if (data.success) {
-                                  if (data.currentSessionTerminated) {
-                                    localStorage.removeItem("token");
-                                    localStorage.removeItem("user");
-                                    router.replace("/login");
-                                    return;
-                                  }
-                                  const token2 = localStorage.getItem("token");
-                                  const res2 = await fetch("/api/sessions", {
-                                    headers: { Authorization: `Bearer ${token2}` }
-                                  });
-                                  const data2 = await res2.json();
-                                  if (data2.success) setAllSessions(data2.data.sessions);
-                                }
-                              }}
-                              className="px-2 py-1 rounded-lg bg-red-500/20 text-red-400 hover:bg-red-500/30 text-xs"
-                            >
-                              Terminate
-                            </button>
-                          </td>
+                <div>
+                  {/* Desktop View */}
+                  <div className="overflow-x-auto hidden md:block">
+                    <table className="w-full">
+                      <thead>
+                        <tr className="border-b border-white/[0.06]">
+                          <th className="text-left py-4 px-4 text-white/50 text-sm font-medium">#</th>
+                          <th className="text-left py-4 px-4 text-white/50 text-sm font-medium">Device</th>
+                          <th className="text-left py-4 px-4 text-white/50 text-sm font-medium">IP Address</th>
+                          <th className="text-left py-4 px-4 text-white/50 text-sm font-medium">Logged In</th>
+                          <th className="text-left py-4 px-4 text-white/50 text-sm font-medium">Last Active</th>
+                          <th className="text-left py-4 px-4 text-white/50 text-sm font-medium">Actions</th>
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                      </thead>
+                      <tbody>
+                        {allSessions.map((session: any, idx: number) => (
+                          <tr key={session._id} className="border-b border-white/[0.04] hover:bg-white/[0.02]">
+                            <td className="py-4 px-4 text-white/50 text-sm">{idx + 1}</td>
+                            <td className="py-4 px-4 text-white/70 text-sm max-w-[300px] truncate" title={session.deviceInfo}>
+                              {session.deviceInfo}
+                            </td>
+                            <td className="py-4 px-4 text-white/70 text-sm">{session.ipAddress}</td>
+                            <td className="py-4 px-4 text-white/50 text-sm">{new Date(session.createdAt).toLocaleString()}</td>
+                            <td className="py-4 px-4 text-white/50 text-sm">{new Date(session.lastActive).toLocaleString()}</td>
+                            <td className="py-4 px-4">
+                              <button
+                                onClick={async () => {
+                                  const token = localStorage.getItem("token");
+                                  if (!confirm("Terminate this session? The user will be logged out.")) return;
+                                  const res = await fetch(`/api/sessions?sessionId=${session._id}`, {
+                                    method: "DELETE",
+                                    headers: { Authorization: `Bearer ${token}` }
+                                  });
+                                  const data = await res.json();
+                                  if (data.success) {
+                                    if (data.currentSessionTerminated) {
+                                      localStorage.removeItem("token");
+                                      localStorage.removeItem("user");
+                                      router.replace("/login");
+                                      return;
+                                    }
+                                    const token2 = localStorage.getItem("token");
+                                    const res2 = await fetch("/api/sessions", {
+                                      headers: { Authorization: `Bearer ${token2}` }
+                                    });
+                                    const data2 = await res2.json();
+                                    if (data2.success) setAllSessions(data2.data);
+                                  }
+                                }}
+                                className="px-3 py-1.5 rounded-lg bg-red-500/20 text-red-400 hover:bg-red-500/30 text-xs font-medium"
+                              >
+                                Terminate
+                              </button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+
+                  {/* Mobile View */}
+                  <div className="grid grid-cols-1 gap-4 md:hidden">
+                    {allSessions.map((session: any, idx: number) => (
+                      <div key={session._id} className="glass-card p-4 space-y-3">
+                        <div className="flex items-center justify-between">
+                          <span className="text-white/40 text-xs font-medium">Session #{idx + 1}</span>
+                          <button
+                            onClick={async () => {
+                              const token = localStorage.getItem("token");
+                              if (!confirm("Terminate this session? The user will be logged out.")) return;
+                              const res = await fetch(`/api/sessions?sessionId=${session._id}`, {
+                                method: "DELETE",
+                                headers: { Authorization: `Bearer ${token}` }
+                              });
+                              const data = await res.json();
+                              if (data.success) {
+                                if (data.currentSessionTerminated) {
+                                  localStorage.removeItem("token");
+                                  localStorage.removeItem("user");
+                                  router.replace("/login");
+                                  return;
+                                }
+                                const token2 = localStorage.getItem("token");
+                                const res2 = await fetch("/api/sessions", {
+                                  headers: { Authorization: `Bearer ${token2}` }
+                                });
+                                const data2 = await res2.json();
+                                if (data2.success) setAllSessions(data2.data);
+                              }
+                            }}
+                            className="min-h-[44px] min-w-[44px] flex items-center justify-center px-3 py-2 rounded-xl bg-red-500/20 hover:bg-red-500/30 text-red-400 text-xs font-semibold"
+                          >
+                            Terminate
+                          </button>
+                        </div>
+                        <div className="space-y-1.5 text-xs text-white/70 border-t border-white/[0.04] pt-2.5">
+                          <p className="truncate"><span className="text-white/40">Device:</span> {session.deviceInfo}</p>
+                          <p><span className="text-white/40">IP Address:</span> {session.ipAddress}</p>
+                          <p><span className="text-white/40">Logged In:</span> {new Date(session.createdAt).toLocaleString()}</p>
+                          <p><span className="text-white/40">Last Active:</span> {new Date(session.lastActive).toLocaleString()}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               ) : (
                 <div className="glass-card p-12 text-center">
@@ -1273,29 +1691,7 @@ export default function AdminDashboard() {
         </div>
       </main>
 
-      <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-50 bg-brand-surface border-t border-white/[0.06] flex justify-around py-2 px-1">
-        {[
-          { id: "analytics", icon: DollarSign, label: "Analytics" },
-          { id: "artists", icon: Mic2, label: "Artists" },
-          { id: "partners", icon: Users, label: "Partners" },
-          { id: "bookings", icon: Calendar, label: "Bookings" },
-          { id: "notifications", icon: Bell, label: "Alerts" },
-        ].map((item) => (
-          <button
-            key={item.id}
-            onClick={() => setActiveTab(item.id as Tab)}
-            className={`relative flex flex-col items-center gap-0.5 px-3 py-1 rounded-lg transition-all ${
-              activeTab === item.id ? "text-brand-orange" : "text-white/40 hover:text-white/60"
-            }`}
-          >
-            <item.icon className="w-5 h-5" />
-            <span className="text-[10px] font-medium">{item.label}</span>
-            {item.id === "notifications" && adminUnreadCount > 0 && (
-              <span className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-brand-pink" />
-            )}
-          </button>
-        ))}
-      </nav>
+
 
       {selectedProfile && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
@@ -1325,7 +1721,7 @@ export default function AdminDashboard() {
                     <p className="text-white/50">{(selectedProfile.data as Artist).email}</p>
                   </div>
                 </div>
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <p className="text-white/40 text-sm">Phone</p>
                     <p className="text-white">{(selectedProfile.data as Artist).phone || "N/A"}</p>

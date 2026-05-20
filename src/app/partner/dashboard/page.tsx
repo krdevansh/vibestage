@@ -526,33 +526,7 @@ export default function PartnerDashboard() {
         </button>
       </aside>
 
-      {/* Mobile Bottom Nav */}
-      <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-50 bg-brand-surface border-t border-white/[0.06] flex justify-around py-2 px-1">
-        {[
-          { id: "dashboard", icon: LayoutDashboard, label: "Dashboard" },
-          { id: "browse", icon: Music, label: "Browse" },
-          { id: "bookings", icon: Calendar, label: "Bookings" },
-          { id: "notifications", icon: Bell, label: "Alerts" },
-          { id: "profile", icon: Settings, label: "Profile" },
-        ].map((item) => (
-          <button
-            key={item.id}
-            onClick={() => setActiveTab(item.id)}
-            className={`relative flex flex-col items-center gap-0.5 px-3 py-1 rounded-lg transition-all ${
-              activeTab === item.id ? "text-brand-orange" : "text-white/40 hover:text-white/60"
-            }`}
-          >
-            <item.icon className="w-5 h-5" />
-            <span className="text-[10px] font-medium">{item.label}</span>
-            {item.id === "bookings" && pendingBookings.length > 0 && (
-              <span className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-brand-pink" />
-            )}
-            {item.id === "notifications" && notifUnreadCount > 0 && (
-              <span className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-brand-pink" />
-            )}
-          </button>
-        ))}
-      </nav>
+
 
       {/* Mobile Header */}
       <div className="lg:hidden fixed top-0 left-0 right-0 z-40 bg-brand-surface border-b border-white/[0.06] px-4 py-3 flex items-center justify-between">
@@ -619,7 +593,7 @@ export default function PartnerDashboard() {
       )}
 
       {/* Main Content */}
-      <main className="flex-1 lg:ml-64 p-4 sm:p-6 pt-16 lg:pt-8 pb-20 lg:pb-6">
+      <main className="flex-1 lg:ml-64 p-4 sm:p-6 pt-16 lg:pt-8 pb-6">
 
         {/* Dashboard Tab */}
         {activeTab === "dashboard" && (
@@ -766,13 +740,13 @@ export default function PartnerDashboard() {
                       <label className="block text-xs text-white/40 mb-1">Proposed Dates and Venues *</label>
                       <div className="space-y-2">
                         {[0, 1].map((i) => (
-                          <div key={i} className="flex gap-2">
+                          <div key={i} className="flex flex-col sm:flex-row gap-2">
                             <input type="date" value={bookingForm.dates[i]} min={new Date(Date.now() + 86400000).toISOString().split("T")[0]}
                               onChange={(e) => { const nd = [...bookingForm.dates]; nd[i] = e.target.value; setBookingForm({ ...bookingForm, dates: nd }); }}
-                              className="w-1/2 px-3 py-2.5 rounded-xl bg-white/[0.04] border border-white/[0.08] text-white text-sm" />
+                              className="w-full sm:w-1/2 px-3 py-2.5 rounded-xl bg-white/[0.04] border border-white/[0.08] text-white text-sm" />
                             <input type="text" value={bookingForm.venues[i]} placeholder={i === 0 ? "Venue name" : "Venue name"}
                               onChange={(e) => { const nv = [...bookingForm.venues]; nv[i] = e.target.value; setBookingForm({ ...bookingForm, venues: nv }); }}
-                              className="w-1/2 px-3 py-2.5 rounded-xl bg-white/[0.04] border border-white/[0.08] text-white text-sm" />
+                              className="w-full sm:w-1/2 px-3 py-2.5 rounded-xl bg-white/[0.04] border border-white/[0.08] text-white text-sm" />
                           </div>
                         ))}
                       </div>
@@ -792,11 +766,11 @@ export default function PartnerDashboard() {
                     {bookingError && (
                       <div className="p-3 rounded-xl bg-red-500/10 text-red-400 text-sm text-center font-medium">{bookingError}</div>
                     )}
-                    <div className="flex gap-3">
-                      <button onClick={() => setSelectedArtist(null)} className="flex-1 px-4 py-2.5 rounded-xl bg-white/[0.04] text-white/60 hover:text-white text-sm">
+                    <div className="flex flex-col sm:flex-row gap-3">
+                      <button onClick={() => setSelectedArtist(null)} className="w-full sm:flex-1 min-h-[44px] px-4 py-2.5 rounded-xl bg-white/[0.04] text-white/60 hover:text-white text-sm font-semibold">
                         Cancel
                       </button>
-                      <button onClick={createBooking} disabled={bookingLoading} className="flex-1 px-4 py-2.5 rounded-xl bg-brand-gradient text-white text-sm font-medium">
+                      <button onClick={createBooking} disabled={bookingLoading} className="w-full sm:flex-1 min-h-[44px] px-4 py-2.5 rounded-xl bg-brand-gradient text-white text-sm font-medium">
                         <span>{bookingLoading ? "Sending..." : "Send Booking Request"}</span>
                       </button>
                     </div>
@@ -814,7 +788,7 @@ export default function PartnerDashboard() {
           <div className="max-w-3xl">
             <h2 className="text-2xl font-display font-bold text-white mb-6">My Bookings</h2>
             
-            <div className="flex gap-2 mb-6">
+            <div className="flex flex-wrap gap-2 mb-6">
               {[
                 { label: "All", list: bookings },
                 { label: "Pending", list: pendingBookings },
