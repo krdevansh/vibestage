@@ -29,17 +29,17 @@ export default function HeroSection() {
       }} />
 
       {/* Top spotlight glow */}
-      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[600px] bg-glow-orange opacity-40 animate-pulse-glow blur-3xl" />
-      <div className="absolute top-20 right-1/4 w-[500px] h-[400px] bg-glow-pink opacity-25 animate-pulse-glow blur-3xl" style={{ animationDelay: "1.5s" }} />
+      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[400px] sm:w-[800px] h-[300px] sm:h-[600px] bg-glow-orange opacity-30 sm:opacity-40 animate-pulse-glow blur-3xl" />
+      <div className="absolute top-20 right-1/4 w-[300px] sm:w-[500px] h-[250px] sm:h-[400px] bg-glow-pink opacity-20 sm:opacity-25 animate-pulse-glow blur-3xl hidden sm:block" style={{ animationDelay: "1.5s" }} />
 
       {/* Spotlight cone */}
-      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[2px] h-[40vh]" style={{
+      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[2px] h-[40vh] hidden sm:block" style={{
         background: "linear-gradient(180deg, rgba(255,122,24,0.6) 0%, transparent 100%)",
       }} />
-      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-1 h-2 rounded-full bg-brand-orange shadow-[0_0_30px_10px_rgba(255,122,24,0.6)]" />
+      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-1 h-2 rounded-full bg-brand-orange shadow-[0_0_30px_10px_rgba(255,122,24,0.6)] hidden sm:block" />
 
       {/* Grid pattern */}
-      <div className="absolute inset-0 opacity-[0.03]" style={{
+      <div className="absolute inset-0 opacity-[0.02] sm:opacity-[0.03]" style={{
         backgroundImage: `linear-gradient(rgba(255,255,255,0.05) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.05) 1px, transparent 1px)`,
         backgroundSize: "60px 60px",
       }} />
@@ -47,41 +47,40 @@ export default function HeroSection() {
       {/* Mouse-follow glow */}
       <div ref={glowRef} className="absolute inset-0 transition-all duration-700 pointer-events-none" />
 
-      {/* Floating orbs */}
-      <div className="absolute top-[20%] left-[10%] w-2 h-2 rounded-full bg-brand-orange/40 animate-float" />
-      <div className="absolute top-[60%] right-[15%] w-1.5 h-1.5 rounded-full bg-brand-pink/40 animate-float" style={{ animationDelay: "2s" }} />
-      <div className="absolute top-[40%] left-[80%] w-1 h-1 rounded-full bg-brand-orange/30 animate-float" style={{ animationDelay: "4s" }} />
-      <div className="absolute top-[75%] left-[25%] w-2.5 h-2.5 rounded-full bg-brand-pink/20 animate-float" style={{ animationDelay: "1s" }} />
+      {/* Floating orbs - hidden on small mobile */}
+      <div className="absolute top-[20%] left-[10%] w-2 h-2 rounded-full bg-brand-orange/40 animate-float hidden sm:block" />
+      <div className="absolute top-[60%] right-[15%] w-1.5 h-1.5 rounded-full bg-brand-pink/40 animate-float hidden sm:block" style={{ animationDelay: "2s" }} />
+      <div className="absolute top-[40%] left-[80%] w-1 h-1 rounded-full bg-brand-orange/30 animate-float hidden sm:block" style={{ animationDelay: "4s" }} />
+      <div className="absolute top-[75%] left-[25%] w-2.5 h-2.5 rounded-full bg-brand-pink/20 animate-float hidden sm:block" style={{ animationDelay: "1s" }} />
 
       {/* ── Content ── */}
       <div className="relative z-10 max-w-5xl mx-auto px-6 text-center">
         {/* Badge */}
-        <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-white/10 bg-white/[0.03] backdrop-blur-sm mb-8 opacity-0 animate-fade-in">
-          <div className="w-2 h-2 rounded-full bg-brand-orange animate-pulse" />
-          <span className="text-xs font-medium text-white/60 uppercase tracking-widest">
+        <div className="inline-flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-1 rounded-full border border-white/10 bg-white/[0.03] backdrop-blur-sm mb-6 sm:mb-8 opacity-0 animate-fade-in">
+          <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full bg-brand-orange animate-pulse" />
+          <span className="text-[10px] sm:text-xs font-medium text-white/60 uppercase tracking-widest">
             Now Booking Artists Worldwide
           </span>
         </div>
 
         {/* Main Heading */}
-        <h1 className="font-display text-5xl sm:text-7xl md:text-8xl lg:text-9xl font-black leading-[0.9] tracking-tighter mb-6 opacity-0 animate-slide-up">
+        <h1 className="font-display text-[2.5rem] leading-[1] sm:text-7xl md:text-8xl lg:text-9xl font-black tracking-tighter mb-4 sm:mb-6 opacity-0 animate-slide-up">
           <span className="block text-white">LIVE MUSIC.</span>
           <span className="block gradient-text mt-1">REAL VIBES.</span>
         </h1>
 
         {/* Sub text */}
-        <p className="text-white/40 text-lg md:text-xl max-w-xl mx-auto leading-relaxed mb-10 opacity-0 animate-fade-in animate-delay-300">
+        <p className="text-white/40 text-sm sm:text-base md:text-xl max-w-xl mx-auto leading-relaxed mb-8 sm:mb-10 px-2 sm:px-0 opacity-0 animate-fade-in animate-delay-300">
           The premium platform connecting event organizers with
           extraordinary live performers. One stage at a time.
         </p>
 
         {/* CTAs */}
-        <div className="flex flex-col sm:flex-row items-center justify-center gap-4 opacity-0 animate-fade-in animate-delay-500">
-
-          <Link href="/login?role=artist" className="btn-secondary text-lg !px-10 !py-4" id="hero-cta-artist">
+        <div className="flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-4 opacity-0 animate-fade-in animate-delay-500">
+          <Link href="/login?role=artist" className="btn-secondary text-sm sm:text-lg !px-6 sm:!px-10 !py-3 sm:!py-4 w-full sm:w-auto" id="hero-cta-artist">
             <span>Login as Artist</span>
           </Link>
-          <Link href="/login?role=partner" className="btn-secondary text-lg !px-10 !py-4" id="hero-cta-partner">
+          <Link href="/login?role=partner" className="btn-secondary text-sm sm:text-lg !px-6 sm:!px-10 !py-3 sm:!py-4 w-full sm:w-auto" id="hero-cta-partner">
             <span>Login as Organizer</span>
           </Link>
         </div>

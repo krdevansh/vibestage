@@ -61,7 +61,7 @@ export default function ArtistsPage() {
       <Navbar />
 
       <section className="relative pt-28 pb-12 overflow-hidden">
-        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[400px] bg-glow-orange opacity-10 blur-3xl" />
+        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[400px] sm:w-[800px] h-[200px] sm:h-[400px] bg-glow-orange opacity-10 blur-3xl" />
 
         <div className="max-w-7xl mx-auto px-6 relative z-10">
           <div className="text-center mb-10">

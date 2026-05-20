@@ -35,8 +35,8 @@ export default function JoinAsArtistPage() {
       <Navbar />
       
       <section className="relative pt-32 pb-20 md:pt-40 md:pb-28 overflow-hidden">
-        <div className="absolute top-20 left-1/2 -translate-x-1/2 w-[600px] h-[500px] bg-glow-orange opacity-15 blur-3xl" />
-        <div className="absolute top-40 right-10 w-[400px] h-[400px] bg-glow-pink opacity-10 blur-3xl" />
+        <div className="absolute top-20 left-1/2 -translate-x-1/2 w-[300px] sm:w-[600px] h-[300px] sm:h-[500px] bg-glow-orange opacity-15 blur-3xl" />
+        <div className="absolute top-40 right-10 w-[200px] sm:w-[400px] h-[200px] sm:h-[400px] bg-glow-pink opacity-10 blur-3xl hidden sm:block" />
         
         <div className="max-w-5xl mx-auto px-6 text-center relative z-10">
           <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-brand-orange/20 bg-brand-orange/5 mb-8">
