@@ -84,7 +84,7 @@ interface DashboardStats {
   pendingPayouts: number;
 }
 
-const ADMIN_COMMISSION_PERCENT = 30;
+const ADMIN_COMMISSION_PERCENT = 20;
 
 export default function ArtistDashboard() {
   const router = useRouter();

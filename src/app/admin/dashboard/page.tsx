@@ -443,7 +443,7 @@ export default function AdminDashboard() {
                       <p className="text-xl font-bold text-white">₹{analytics.totalRevenue.toLocaleString()}</p>
                     </div>
                     <div>
-                      <p className="text-white/50 text-sm">Commission (30%)</p>
+                      <p className="text-white/50 text-sm">Commission (20%)</p>
                       <p className="text-xl font-bold gradient-text">₹{analytics.commission.toLocaleString()}</p>
                     </div>
                   </div>
@@ -908,7 +908,7 @@ export default function AdminDashboard() {
                             <td className="py-4 px-4">
                               <div className="flex flex-col gap-1 text-xs">
                                 {booking.paymentType && (booking.status === "awaiting_confirmation" || booking.status === "confirmed") && (
-                                  <span className="text-brand-orange">{booking.paymentType === "advance" ? "30% Advance" : "Full Payment"}</span>
+                                  <span className="text-brand-orange">{booking.paymentType === "advance" ? "20% Advance" : "Full Payment"}</span>
                                 )}
                                 {booking.organizerPaidAdmin && (
                                   <span className="text-green-400">Org Paid Admin ✓</span>
@@ -1006,7 +1006,7 @@ export default function AdminDashboard() {
                                 {/* Confirmed Advance Payment - Ask rest */}
                                 {booking.status === "confirmed" && booking.paymentType === "advance" && (
                                   <span className="px-2 py-1.5 rounded-lg bg-brand-orange/10 text-brand-orange text-xs max-w-[200px]">
-                                    Advance received. Ask rest ₹{((booking.finalPrice || 0) - (booking.advanceAmount || Math.round((booking.finalPrice || 0) * 0.3))).toLocaleString()} from organizer before show.
+                                    Advance received. Ask rest ₹{((booking.finalPrice || 0) - (booking.advanceAmount || Math.round((booking.finalPrice || 0) * 0.2))).toLocaleString()} from organizer before show.
                                   </span>
                                 )}
 
@@ -1097,7 +1097,7 @@ export default function AdminDashboard() {
                             <p className="text-white/40 text-xs">Payment Information</p>
                             <div className="flex flex-col gap-1 mt-1 text-xs">
                               {booking.paymentType && (booking.status === "awaiting_confirmation" || booking.status === "confirmed") && (
-                                <span className="text-brand-orange">{booking.paymentType === "advance" ? "30% Advance" : "Full Payment"}</span>
+                                <span className="text-brand-orange">{booking.paymentType === "advance" ? "20% Advance" : "Full Payment"}</span>
                               )}
                               {booking.organizerPaidAdmin && (
                                 <span className="text-green-400 font-medium">Organizer Paid Admin ✓</span>
@@ -1255,7 +1255,7 @@ export default function AdminDashboard() {
                       <p className="text-2xl font-bold gradient-text">₹{payoutSummary.totalRevenue.toLocaleString()}</p>
                     </div>
                     <div className="glass-card p-6">
-                      <p className="text-white/40 text-sm mb-1">Total Commission (30%)</p>
+                      <p className="text-white/40 text-sm mb-1">Total Commission (20%)</p>
                       <p className="text-2xl font-bold text-green-400">₹{payoutSummary.totalCommission.toLocaleString()}</p>
                     </div>
                     <div className="glass-card p-6">
@@ -1312,9 +1312,9 @@ export default function AdminDashboard() {
                     <h3 className="text-lg font-semibold text-white mb-4">Payout Instructions</h3>
                     <div className="space-y-3 text-white/60 text-sm">
                       <p>• When organizer pays full amount, admin releases payment to artist</p>
-                      <p>• For advance payments (30%), organizer pays admin 30% and remaining to artist directly</p>
+                      <p>• For advance payments (20%), organizer pays admin 20% and remaining to artist directly</p>
                       <p>• Artist UPI details are visible in their profile for manual transfer</p>
-                      <p>• Commission (30%) is automatically calculated from booking amount</p>
+                      <p>• Commission (20%) is automatically calculated from booking amount</p>
                     </div>
                   </div>
                 </div>

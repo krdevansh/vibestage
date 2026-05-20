@@ -25,13 +25,16 @@ export async function POST(request: NextRequest) {
 
     await connectDB();
 
+    const dbUser = await User.findById(user.id);
+    const userName = dbUser?.name || user.email || "User";
+
     const adminUsers = await User.find({ role: "admin" });
     for (const admin of adminUsers) {
       await Notification.create({
         userId: admin._id,
         type: "general",
         title: "Account Deletion Request",
-        message: `${user.name} (${user.email}) - ${user.role} has requested account deletion. Review in Admin Dashboard.`,
+        message: `${userName} (${user.email}) - ${user.role} has requested account deletion. Review in Admin Dashboard.`,
       });
     }
 

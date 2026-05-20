@@ -3,6 +3,7 @@ import connectDB from "@/lib/mongodb";
 import Review from "@/models/Review";
 import Artist from "@/models/Artist";
 import Booking from "@/models/Booking";
+import User from "@/models/User";
 import jwt from "jsonwebtoken";
 
 const JWT_SECRET = process.env.JWT_SECRET || "vibestage_dev_secret";
@@ -65,11 +66,14 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: false, error: "Already reviewed" }, { status: 400 });
     }
 
+    const userDoc = await User.findById(user.id);
+    const reviewerName = userDoc?.name || booking.organizerName || "Anonymous";
+
     const review = await Review.create({
       artistId: booking.artistId,
       bookingId: booking._id,
       reviewerId: user.id,
-      reviewerName: booking.organizerName,
+      reviewerName,
       rating,
       comment: comment || "",
     });

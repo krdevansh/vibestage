@@ -18,7 +18,7 @@ function getUserFromToken(request: NextRequest) {
   }
 }
 
-const ADMIN_COMMISSION_PERCENT = 30;
+const ADMIN_COMMISSION_PERCENT = 20;
 
 // POST /api/partner/bookings - Create a new booking
 export async function POST(request: NextRequest) {
@@ -78,7 +78,7 @@ export async function POST(request: NextRequest) {
       artistName: artist.name,
       artistUserId: artist.userId,
       organizerId: user.id,
-      organizerName: user.name,
+      organizerName: organizerUser?.name || "Organizer",
       organizerEmail: user.email,
       proposedDates: proposedDates.map((d: string) => new Date(d)),
       proposedVenues,
@@ -97,7 +97,7 @@ export async function POST(request: NextRequest) {
       userId: artist.userId,
       type: "booking_request",
       title: "New Booking Request",
-      message: `${user.name} wants to book you for "${eventName}"`,
+      message: `${organizerUser?.name || "Someone"} wants to book you for "${eventName}"`,
       bookingId: booking._id
     });
 
@@ -266,8 +266,8 @@ export async function PUT(request: NextRequest) {
     // Notify about admin payment
     if (action === "payAdmin") {
       const isAdvance = paymentType === "advance";
-      const amount = isAdvance ? (booking.advanceAmount || Math.round(booking.finalPrice * 0.3)) : booking.finalPrice;
-      const remaining = isAdvance ? (booking.finalPrice - (booking.advanceAmount || Math.round(booking.finalPrice * 0.3))) : 0;
+      const amount = isAdvance ? (booking.advanceAmount || Math.round(booking.finalPrice * 0.2)) : booking.finalPrice;
+      const remaining = isAdvance ? (booking.finalPrice - (booking.advanceAmount || Math.round(booking.finalPrice * 0.2))) : 0;
 
       await Notification.create({
         userId: booking.artistUserId,
@@ -284,7 +284,7 @@ export async function PUT(request: NextRequest) {
     }
 
     if (action === "payArtistRemaining") {
-      const remaining = booking.finalPrice - (booking.advanceAmount || Math.round(booking.finalPrice * 0.3));
+      const remaining = booking.finalPrice - (booking.advanceAmount || Math.round(booking.finalPrice * 0.2));
       await Notification.create({
         userId: booking.artistUserId,
         type: "payment",
@@ -315,7 +315,7 @@ export async function PUT(request: NextRequest) {
     }
 
     if (action === "submitPaymentProof") {
-      const payType = booking.paymentType === "advance" ? "30% advance" : "full";
+      const payType = booking.paymentType === "advance" ? "20% advance" : "full";
       await notifyAdmins(
         "Payment Proof Submitted",
         `${booking.organizerName} submitted ${payType} payment proof (UTR: ${body.utr}) for "${booking.eventName}". Verify and confirm.`
@@ -323,7 +323,7 @@ export async function PUT(request: NextRequest) {
     }
 
     if (action === "adminConfirmPayment") {
-      const payDesc = booking.paymentType === "advance" ? "30% advance payment" : "full payment";
+      const payDesc = booking.paymentType === "advance" ? "20% advance payment" : "full payment";
       await Notification.create({
         userId: booking.artistUserId,
         type: "booking_accepted",

@@ -36,7 +36,7 @@ export async function GET(req: NextRequest) {
       
       const completedBookings = await Booking.find({ status: { $in: ["completed", "confirmed"] } });
       const totalRevenue = completedBookings.reduce((sum, b) => sum + (b.budget || 0), 0);
-      const commission = totalRevenue * 0.3;
+      const commission = totalRevenue * 0.2;
 
       return NextResponse.json({
         success: true,

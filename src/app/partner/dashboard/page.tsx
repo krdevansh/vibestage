@@ -52,7 +52,7 @@ interface DashboardStats {
   totalSpent: number;
 }
 
-const ADMIN_COMMISSION_PERCENT = 30;
+const ADMIN_COMMISSION_PERCENT = 20;
 
 function calculateFinalPrice(basePrice: number) {
   return Math.round(basePrice * (1 + ADMIN_COMMISSION_PERCENT / 100));
@@ -321,7 +321,7 @@ export default function PartnerDashboard() {
     setPayingBooking(showPaymentProofModal);
     try {
       const advanceAmt = paymentProofForm.paymentType === "advance" ? Math.round(
-        (bookings.find(b => b._id === showPaymentProofModal)?.finalPrice || 0) * 0.3
+        (bookings.find(b => b._id === showPaymentProofModal)?.finalPrice || 0) * 0.2
       ) : 0;
       const res = await fetch("/api/partner/bookings", {
         method: "PUT",
@@ -374,9 +374,12 @@ export default function PartnerDashboard() {
         setReviewForm({ rating: 5, comment: "" });
         setPaymentSuccess("Review submitted!");
         setTimeout(() => setPaymentSuccess(""), 3000);
+      } else {
+        alert(data.error || "Failed to submit review");
       }
     } catch (error) {
       console.error("Review error:", error);
+      alert("Network error. Please try again.");
     }
   };
 
@@ -905,7 +908,7 @@ export default function PartnerDashboard() {
                                 }}
                                 className="flex-1 min-w-[200px] px-4 py-3 rounded-xl bg-brand-orange/20 text-brand-orange text-sm font-medium border border-brand-orange/30"
                               >
-                                Pay 30% Advance &nbsp; <span className="text-white/80">₹{Math.round(booking.finalPrice * 0.3).toLocaleString()}</span>
+                                Pay 20% Advance &nbsp; <span className="text-white/80">₹{Math.round(booking.finalPrice * 0.2).toLocaleString()}</span>
                               </button>
                             </div>
                             <button
@@ -925,7 +928,7 @@ export default function PartnerDashboard() {
                               <p className="text-white/60 text-xs mt-1">Your payment proof has been submitted. Admin will verify and confirm shortly.</p>
                               {booking.paymentProof?.screenshot && (
                                 <div className="mt-2 space-y-1">
-                                  <p className="text-white/60 text-xs">Type: <span className="text-white font-medium">{booking.paymentType === "advance" ? "30% Advance" : "Full Payment"}</span></p>
+                                  <p className="text-white/60 text-xs">Type: <span className="text-white font-medium">{booking.paymentType === "advance" ? "20% Advance" : "Full Payment"}</span></p>
                                   <p className="text-white/40 text-xs">UTR: {booking.paymentProof.utr}</p>
                                   <p className="text-white/40 text-xs">Paid on: {new Date(booking.paymentProof.paidAt).toLocaleString()}</p>
                                 </div>
@@ -946,7 +949,7 @@ export default function PartnerDashboard() {
                                 <p className="text-green-400/80 text-xs mt-1">Payment done. Check your bank.</p>
                               )}
                               {booking.paymentType === "advance" && (
-                                <p className="text-white/60 text-xs mt-1">30% advance received. Pay remaining ₹{(booking.finalPrice - (booking.advanceAmount || Math.round(booking.finalPrice * 0.3))).toLocaleString()} to artist before the show.</p>
+                                <p className="text-white/60 text-xs mt-1">20% advance received. Pay remaining ₹{(booking.finalPrice - (booking.advanceAmount || Math.round(booking.finalPrice * 0.2))).toLocaleString()} to artist before the show.</p>
                               )}
                             </div>
                             {booking.paymentType === "full" && booking.adminPaidArtist && (
@@ -1221,10 +1224,10 @@ export default function PartnerDashboard() {
             </div>
             {selectedPaymentType && (
               <div className="mb-4 p-3 rounded-lg bg-brand-orange/10 border border-brand-orange/30 text-sm">
-                <p className="text-brand-orange font-medium">{selectedPaymentType === "advance" ? "30% Advance Payment" : "Full Payment"}</p>
+                <p className="text-brand-orange font-medium">{selectedPaymentType === "advance" ? "20% Advance Payment" : "Full Payment"}</p>
                 <p className="text-white/60 text-xs mt-1">
                   Amount: ₹{(selectedPaymentType === "advance"
-                    ? Math.round((bookings.find(b => b._id === showPaymentProofModal)?.finalPrice || 0) * 0.3)
+                    ? Math.round((bookings.find(b => b._id === showPaymentProofModal)?.finalPrice || 0) * 0.2)
                     : (bookings.find(b => b._id === showPaymentProofModal)?.finalPrice || 0)
                   ).toLocaleString()}
                 </p>
