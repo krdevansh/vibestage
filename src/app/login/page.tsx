@@ -49,6 +49,19 @@ function LoginForm() {
     }
   }, [searchParams]);
 
+  useEffect(() => {
+    const token = localStorage.getItem("token");
+    const userData = localStorage.getItem("user");
+    if (token && userData) {
+      try {
+        const parsed = JSON.parse(userData);
+        if (parsed.role === "admin") router.replace("/admin/dashboard");
+        else if (parsed.role === "artist") router.replace("/artist/dashboard");
+        else if (parsed.role === "event_partner") router.replace("/partner/dashboard");
+      } catch {}
+    }
+  }, [router]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);

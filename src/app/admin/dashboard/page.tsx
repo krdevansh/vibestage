@@ -4,7 +4,8 @@ import { useEffect, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
-import { Users, Mic2, Calendar, DollarSign, LogOut, Eye, Trash2, ChevronLeft, CreditCard, CheckCircle, XCircle, Bell, Check, X, AlertTriangle, Upload } from "lucide-react";
+import { Users, Mic2, Calendar, DollarSign, LogOut, Eye, Trash2, ChevronLeft, CreditCard, CheckCircle, XCircle, Bell, Check, X, AlertTriangle, Upload, Menu } from "lucide-react";
+import { useAuthGuard } from "@/hooks/useAuthGuard";
 
 interface User {
   id: string;
@@ -124,6 +125,9 @@ export default function AdminDashboard() {
   const settingsQrRef = useRef<HTMLInputElement>(null);
   const [allSessions, setAllSessions] = useState<any[]>([]);
   const [sessionsView, setSessionsView] = useState<string>("all");
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
+  const { logout: authLogout } = useAuthGuard(user !== null);
 
   useEffect(() => {
     const checkAuth = () => {
@@ -251,9 +255,7 @@ export default function AdminDashboard() {
   };
 
   const handleLogout = () => {
-    localStorage.removeItem("token");
-    localStorage.removeItem("user");
-    router.push("/");
+    authLogout();
   };
 
   if (loading) {
@@ -277,20 +279,64 @@ export default function AdminDashboard() {
 
   return (
     <div className="min-h-screen flex bg-brand-bg">
-      <aside className="w-64 bg-brand-surface border-r border-white/[0.06] fixed h-full">
-        <div className="p-6">
-          <Link href="/" className="flex items-center gap-2 mb-8">
+      <aside className="fixed left-0 top-0 bottom-0 w-64 bg-brand-surface border-r border-white/[0.06] p-4 hidden lg:flex lg:flex-col">
+        <div className="flex items-center gap-2 mb-8 px-2">
+          <Link href="/" className="flex items-center gap-2">
             <span className="text-xl font-display font-bold">
               <span className="gradient-text">Vibe</span>
               <span className="text-white">Stage</span>
             </span>
           </Link>
-          
-          <nav className="space-y-2">
+        </div>
+        
+        <nav className="space-y-2 flex-1">
+          {tabs.map((tab) => (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id as Tab)}
+              className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${
+                activeTab === tab.id
+                  ? "bg-brand-gradient text-white"
+                  : "text-white/50 hover:text-white hover:bg-white/[0.04]"
+              }`}
+            >
+              <tab.icon className="w-5 h-5" />
+              {tab.label}
+              {tab.id === "notifications" && adminUnreadCount > 0 && (
+                <span className="ml-auto bg-brand-pink text-white text-xs px-2 py-0.5 rounded-full">{adminUnreadCount}</span>
+              )}
+            </button>
+          ))}
+        </nav>
+        
+        <button
+          onClick={handleLogout}
+          className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-white/50 hover:text-red-400 hover:bg-red-400/10 transition-all"
+        >
+          <LogOut className="w-5 h-5" />
+          Logout
+        </button>
+      </aside>
+
+      <div className="lg:hidden fixed top-0 left-0 right-0 z-40 bg-brand-surface border-b border-white/[0.06] px-4 py-3 flex items-center justify-between">
+        <Link href="/" className="flex items-center gap-2">
+          <span className="text-lg font-display font-bold">
+            <span className="gradient-text">Vibe</span>
+            <span className="text-white">Stage</span>
+          </span>
+        </Link>
+        <button onClick={() => setMobileMenuOpen(!mobileMenuOpen)} className="text-white/60 p-1">
+          {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+        </button>
+      </div>
+
+      {mobileMenuOpen && (
+        <div className="lg:hidden fixed inset-0 z-30 bg-brand-bg/95 backdrop-blur-sm pt-16">
+          <nav className="p-4 space-y-1">
             {tabs.map((tab) => (
               <button
                 key={tab.id}
-                onClick={() => setActiveTab(tab.id as Tab)}
+                onClick={() => { setActiveTab(tab.id as Tab); setMobileMenuOpen(false); }}
                 className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${
                   activeTab === tab.id
                     ? "bg-brand-gradient text-white"
@@ -304,28 +350,27 @@ export default function AdminDashboard() {
                 )}
               </button>
             ))}
+            <div className="border-t border-white/[0.06] pt-2 mt-2">
+              <button
+                onClick={handleLogout}
+                className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-white/50 hover:text-red-400 hover:bg-red-400/10 transition-all"
+              >
+                <LogOut className="w-5 h-5" />
+                Logout
+              </button>
+            </div>
           </nav>
         </div>
-        
-        <div className="absolute bottom-6 left-6 right-6">
-          <button
-            onClick={handleLogout}
-            className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-white/50 hover:text-red-400 hover:bg-red-400/10 transition-all"
-          >
-            <LogOut className="w-5 h-5" />
-            Logout
-          </button>
-        </div>
-      </aside>
+      )}
 
-      <main className="flex-1 ml-64 p-8 pt-6">
+      <main className="flex-1 lg:ml-64 p-4 sm:p-6 pt-16 lg:pt-6 pb-20 lg:pb-6">
         <div className="max-w-7xl mx-auto">
-          <div className="flex items-center justify-between mb-8">
+          <div className="flex items-center justify-between mb-6 lg:mb-8">
             <div>
-              <h1 className="text-2xl font-display font-bold text-white">
+              <h1 className="text-xl lg:text-2xl font-display font-bold text-white">
                 Admin Dashboard
               </h1>
-              <p className="text-white/40">Platform analytics and management</p>
+              <p className="text-white/40 text-sm lg:text-base">Platform analytics and management</p>
             </div>
           </div>
 
@@ -1227,6 +1272,30 @@ export default function AdminDashboard() {
           )}
         </div>
       </main>
+
+      <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-50 bg-brand-surface border-t border-white/[0.06] flex justify-around py-2 px-1">
+        {[
+          { id: "analytics", icon: DollarSign, label: "Analytics" },
+          { id: "artists", icon: Mic2, label: "Artists" },
+          { id: "partners", icon: Users, label: "Partners" },
+          { id: "bookings", icon: Calendar, label: "Bookings" },
+          { id: "notifications", icon: Bell, label: "Alerts" },
+        ].map((item) => (
+          <button
+            key={item.id}
+            onClick={() => setActiveTab(item.id as Tab)}
+            className={`relative flex flex-col items-center gap-0.5 px-3 py-1 rounded-lg transition-all ${
+              activeTab === item.id ? "text-brand-orange" : "text-white/40 hover:text-white/60"
+            }`}
+          >
+            <item.icon className="w-5 h-5" />
+            <span className="text-[10px] font-medium">{item.label}</span>
+            {item.id === "notifications" && adminUnreadCount > 0 && (
+              <span className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-brand-pink" />
+            )}
+          </button>
+        ))}
+      </nav>
 
       {selectedProfile && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">

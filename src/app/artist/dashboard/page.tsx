@@ -6,8 +6,9 @@ import Link from "next/link";
 import Image from "next/image";
 import { 
   LayoutDashboard, User, Calendar, Bell, DollarSign, 
-  Music, ChevronRight, LogOut, Check, X, Eye, Upload, Star
+  Music, ChevronRight, LogOut, Check, X, Eye, Upload, Star, Menu
 } from "lucide-react";
+import { useAuthGuard } from "@/hooks/useAuthGuard";
 
 interface User {
   id: string;
@@ -96,6 +97,7 @@ export default function ArtistDashboard() {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [sessions, setSessions] = useState<any[]>([]);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   
   // Form states
   const [profileForm, setProfileForm] = useState({
@@ -223,6 +225,8 @@ export default function ArtistDashboard() {
     setGallery(gallery.filter((_, i) => i !== index));
   };
 
+  const { logout: authLogout } = useAuthGuard(user !== null);
+
   useEffect(() => {
     const checkAuth = () => {
       const token = localStorage.getItem("token");
@@ -247,9 +251,7 @@ export default function ArtistDashboard() {
   const calculateFinalPrice = (basePrice: number) => Math.round(basePrice * (1 + ADMIN_COMMISSION_PERCENT / 100));
 
   const handleLogout = () => {
-    localStorage.removeItem("token");
-    localStorage.removeItem("user");
-    router.push("/");
+    authLogout();
   };
 
   const saveProfile = async () => {
@@ -419,13 +421,74 @@ export default function ArtistDashboard() {
         </button>
       </aside>
 
-      {/* Main Content */}
-      <main className="flex-1 lg:ml-64 p-6 pt-8">
-        {/* Mobile Header */}
-        <div className="lg:hidden flex items-center justify-between mb-6">
-          <h1 className="text-xl font-display font-bold gradient-text">Artist Dashboard</h1>
-          <button onClick={handleLogout} className="text-white/60"><LogOut className="w-5 h-5" /></button>
+      {/* Mobile Header */}
+      <div className="lg:hidden fixed top-0 left-0 right-0 z-40 bg-brand-surface border-b border-white/[0.06] px-4 py-3 flex items-center justify-between">
+        <h1 className="text-lg font-display font-bold gradient-text">Artist Dashboard</h1>
+        <div className="flex items-center gap-2">
+          <button onClick={handleLogout} className="text-white/60 p-1"><LogOut className="w-5 h-5" /></button>
+          <button onClick={() => setMobileMenuOpen(!mobileMenuOpen)} className="text-white/60 p-1">
+            {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+          </button>
         </div>
+      </div>
+
+      {mobileMenuOpen && (
+        <div className="lg:hidden fixed inset-0 z-30 bg-brand-bg/95 backdrop-blur-sm pt-16">
+          <nav className="p-4 space-y-1">
+            {[
+              { id: "dashboard", icon: LayoutDashboard, label: "Dashboard" },
+              { id: "profile", icon: User, label: "Edit Profile" },
+              { id: "availability", icon: Calendar, label: "Availability" },
+              { id: "requests", icon: Music, label: "Booking Requests" },
+              { id: "history", icon: ChevronRight, label: "Booking History" },
+              { id: "earnings", icon: DollarSign, label: "Earnings" },
+              { id: "notifications", icon: Bell, label: "Notifications" },
+              { id: "sessions", icon: Eye, label: "Sessions" },
+            ].map((item) => (
+              <button
+                key={item.id}
+                onClick={() => { setActiveTab(item.id); setMobileMenuOpen(false); }}
+                className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${
+                  activeTab === item.id 
+                    ? "bg-brand-gradient text-white" 
+                    : "text-white/60 hover:text-white hover:bg-white/[0.04]"
+                }`}
+              >
+                <item.icon className="w-5 h-5" />
+                <span className="font-medium">{item.label}</span>
+                {item.id === "requests" && pendingBookings.length > 0 && (
+                  <span className="ml-auto bg-brand-pink text-white text-xs px-2 py-0.5 rounded-full">{pendingBookings.length}</span>
+                )}
+                {item.id === "notifications" && unreadCount > 0 && (
+                  <span className="ml-auto bg-brand-pink text-white text-xs px-2 py-0.5 rounded-full">{unreadCount}</span>
+                )}
+              </button>
+            ))}
+            <div className="border-t border-white/[0.06] pt-2 mt-2">
+              <button
+                onClick={async () => {
+                  if (!confirm("Are you sure you want to request account deletion? This cannot be undone.")) return;
+                  const token = localStorage.getItem("token");
+                  const res = await fetch("/api/user/delete-request", {
+                    method: "POST",
+                    headers: { Authorization: `Bearer ${token}` }
+                  });
+                  const data = await res.json();
+                  if (data.success) alert("Deletion request sent to admin.");
+                  else alert(data.error || "Failed to send request");
+                }}
+                className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-red-400/60 hover:text-red-400 hover:bg-red-400/10 transition-all"
+              >
+                <X className="w-5 h-5" />
+                <span className="font-medium">Request Account Deletion</span>
+              </button>
+            </div>
+          </nav>
+        </div>
+      )}
+
+      {/* Main Content */}
+      <main className="flex-1 lg:ml-64 p-4 sm:p-6 pt-16 lg:pt-8 pb-20 lg:pb-6">
 
         {/* Dashboard Tab */}
         {activeTab === "dashboard" && (
@@ -1087,6 +1150,33 @@ export default function ArtistDashboard() {
           </div>
         )}
       </main>
+
+      <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-50 bg-brand-surface border-t border-white/[0.06] flex justify-around py-2 px-1">
+        {[
+          { id: "dashboard", icon: LayoutDashboard, label: "Dashboard" },
+          { id: "requests", icon: Music, label: "Requests" },
+          { id: "earnings", icon: DollarSign, label: "Earnings" },
+          { id: "notifications", icon: Bell, label: "Alerts" },
+          { id: "profile", icon: User, label: "Profile" },
+        ].map((item) => (
+          <button
+            key={item.id}
+            onClick={() => setActiveTab(item.id)}
+            className={`relative flex flex-col items-center gap-0.5 px-3 py-1 rounded-lg transition-all ${
+              activeTab === item.id ? "text-brand-orange" : "text-white/40 hover:text-white/60"
+            }`}
+          >
+            <item.icon className="w-5 h-5" />
+            <span className="text-[10px] font-medium">{item.label}</span>
+            {item.id === "requests" && pendingBookings.length > 0 && (
+              <span className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-brand-pink" />
+            )}
+            {item.id === "notifications" && unreadCount > 0 && (
+              <span className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-brand-pink" />
+            )}
+          </button>
+        ))}
+      </nav>
     </div>
   );
 }

@@ -6,9 +6,10 @@ import Link from "next/link";
 import Image from "next/image";
 import { 
   LayoutDashboard, User, Music, Calendar, Bell, 
-  ChevronRight, LogOut, Check, X, Search, MapPin, Eye, Star, Settings, Upload
+  ChevronRight, LogOut, Check, X, Search, MapPin, Eye, Star, Settings, Upload, Menu
 } from "lucide-react";
 import ArtistCard, { Artist } from "@/components/ArtistCard";
+import { useAuthGuard } from "@/hooks/useAuthGuard";
 
 interface User {
   id: string;
@@ -93,6 +94,7 @@ export default function PartnerDashboard() {
   const proofFileRef = useRef<HTMLInputElement>(null);
   const [notifications, setNotifications] = useState<any[]>([]);
   const [notifUnreadCount, setNotifUnreadCount] = useState(0);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const fetchData = useCallback(async () => {
     const token = localStorage.getItem("token");
@@ -156,6 +158,8 @@ export default function PartnerDashboard() {
     }
   }, []);
 
+  const { logout: authLogout } = useAuthGuard(user !== null);
+
   useEffect(() => {
     const checkAuth = () => {
       const token = localStorage.getItem("token");
@@ -178,9 +182,7 @@ export default function PartnerDashboard() {
   }, [router, fetchData]);
 
   const handleLogout = () => {
-    localStorage.removeItem("token");
-    localStorage.removeItem("user");
-    router.push("/");
+    authLogout();
   };
 
   const createBooking = async () => {
@@ -552,13 +554,72 @@ export default function PartnerDashboard() {
         ))}
       </nav>
 
-      {/* Main Content */}
-      <main className="flex-1 lg:ml-64 p-4 sm:p-6 pt-8 pb-20 lg:pb-6">
-        {/* Mobile Header */}
-        <div className="lg:hidden flex items-center justify-between mb-6">
-          <h1 className="text-xl font-display font-bold gradient-text">Partner Dashboard</h1>
-          <button onClick={handleLogout} className="text-white/60"><LogOut className="w-5 h-5" /></button>
+      {/* Mobile Header */}
+      <div className="lg:hidden fixed top-0 left-0 right-0 z-40 bg-brand-surface border-b border-white/[0.06] px-4 py-3 flex items-center justify-between">
+        <h1 className="text-lg font-display font-bold gradient-text">Partner Dashboard</h1>
+        <div className="flex items-center gap-2">
+          <button onClick={handleLogout} className="text-white/60 p-1"><LogOut className="w-5 h-5" /></button>
+          <button onClick={() => setMobileMenuOpen(!mobileMenuOpen)} className="text-white/60 p-1">
+            {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+          </button>
         </div>
+      </div>
+
+      {mobileMenuOpen && (
+        <div className="lg:hidden fixed inset-0 z-30 bg-brand-bg/95 backdrop-blur-sm pt-16">
+          <nav className="p-4 space-y-1">
+            {[
+              { id: "dashboard", icon: LayoutDashboard, label: "Dashboard" },
+              { id: "browse", icon: Music, label: "Browse Artists" },
+              { id: "bookings", icon: Calendar, label: "My Bookings" },
+              { id: "notifications", icon: Bell, label: "Notifications" },
+              { id: "profile", icon: Settings, label: "Profile" },
+              { id: "history", icon: ChevronRight, label: "History" },
+            ].map((item) => (
+              <button
+                key={item.id}
+                onClick={() => { setActiveTab(item.id); setMobileMenuOpen(false); }}
+                className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${
+                  activeTab === item.id 
+                    ? "bg-brand-gradient text-white" 
+                    : "text-white/60 hover:text-white hover:bg-white/[0.04]"
+                }`}
+              >
+                <item.icon className="w-5 h-5" />
+                <span className="font-medium">{item.label}</span>
+                {item.id === "bookings" && pendingBookings.length > 0 && (
+                  <span className="ml-auto bg-brand-pink text-white text-xs px-2 py-0.5 rounded-full">{pendingBookings.length}</span>
+                )}
+                {item.id === "notifications" && notifUnreadCount > 0 && (
+                  <span className="ml-auto bg-brand-pink text-white text-xs px-2 py-0.5 rounded-full">{notifUnreadCount}</span>
+                )}
+              </button>
+            ))}
+            <div className="border-t border-white/[0.06] pt-2 mt-2">
+              <button
+                onClick={async () => {
+                  if (!confirm("Are you sure you want to request account deletion? This cannot be undone.")) return;
+                  const token = localStorage.getItem("token");
+                  const res = await fetch("/api/user/delete-request", {
+                    method: "POST",
+                    headers: { Authorization: `Bearer ${token}` }
+                  });
+                  const data = await res.json();
+                  if (data.success) alert("Deletion request sent to admin.");
+                  else alert(data.error || "Failed to send request");
+                }}
+                className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-red-400/60 hover:text-red-400 hover:bg-red-400/10 transition-all"
+              >
+                <X className="w-5 h-5" />
+                <span className="font-medium">Request Account Deletion</span>
+              </button>
+            </div>
+          </nav>
+        </div>
+      )}
+
+      {/* Main Content */}
+      <main className="flex-1 lg:ml-64 p-4 sm:p-6 pt-16 lg:pt-8 pb-20 lg:pb-6">
 
         {/* Dashboard Tab */}
         {activeTab === "dashboard" && (
